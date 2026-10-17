@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { toast } from 'sonner';
 import { useCart } from '@/store';
+import { useStoreStatus } from '@/components/store/StoreStatusProvider';
 import { Product } from '@/types/product';
 import { Button } from '@/components/button/Button';
 
@@ -13,16 +15,24 @@ interface Props {
 
 const MIN_ADD_DURATION = 600;
 
+const DEFAULT_SELLING_NOTICE =
+  'Buying is temporarily disabled. You can browse, but orders cannot be placed right now.';
+
 export const AddToCartButton: React.FC<Props> = ({
   product,
   quantity = 1,
   disabled = false,
 }) => {
   const { addItem, isLoading } = useCart();
+  const { buyingEnabled, sellingMessage } = useStoreStatus();
   const [adding, setAdding] = useState(false);
 
   const handleAdd = async () => {
     if (adding) return;
+    if (!buyingEnabled) {
+      toast.error(sellingMessage?.trim() || DEFAULT_SELLING_NOTICE);
+      return;
+    }
     setAdding(true);
     try {
       const started = Date.now();
@@ -55,7 +65,7 @@ export const AddToCartButton: React.FC<Props> = ({
       size="sm"
       disabled={disabled}
     >
-      Add to Cart
+      {buyingEnabled ? 'Add to Cart' : 'Buying Disabled'}
     </Button>
   );
 };

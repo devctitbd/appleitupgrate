@@ -9,10 +9,11 @@ import {
   queryTransaction,
 } from '../controllers/paymentController.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { requireSelling } from '../middleware/requireSelling.js';
 
 const router = express.Router();
 
-router.post('/initiate', protect, initiatePayment);
+router.post('/initiate', protect, requireSelling, initiatePayment);
 router.get('/validate', validatePayment);
 router.post('/validate', validatePayment);
 router.post('/ipn', ipnListener);

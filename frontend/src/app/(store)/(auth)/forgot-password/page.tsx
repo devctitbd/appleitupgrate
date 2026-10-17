@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import api from '@/lib/http';
+import { apiFetch } from '@/lib/http';
 
 const forgotSchema = z.object({
   phone: z
@@ -43,8 +43,11 @@ export default function ForgotPasswordPage() {
 
     setSubmitting(true);
     try {
-      const res = await api.post('/auth/forgot-password', {
-        phone: parsed.data.phone,
+      const res = await apiFetch('/auth/forgot-password', {
+        method: 'POST',
+        body: {
+          phone: parsed.data.phone,
+        },
       });
       const data = res.data;
       if (!res.data.success) {

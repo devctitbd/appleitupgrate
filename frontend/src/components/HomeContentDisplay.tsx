@@ -1,43 +1,17 @@
-'use client';
+import { fetchHomeContent } from '@/lib/serverApi';
 
-import { homeContentApi } from '@/lib/api';
-import { useEffect, useState } from 'react';
+// Server Component — the home content block is fetched with the built-in
+// Next.js fetch() and rendered on the server.
+export default async function HomeContentDisplay() {
+  const homeContent = await fetchHomeContent();
 
-export default function HomeContentDisplay() {
-  const [content, setContent] = useState('');
-  const [enabled, setEnabled] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  if (!homeContent || homeContent.enabled === false) return null;
 
-  useEffect(() => {
-    const loadContent = async () => {
-      try {
-        const response = await homeContentApi.get();
-        setContent(response.data.homeContent.content);
-        setEnabled(response.data.homeContent.enabled);
-      } catch (error) {
-        console.error('Failed to load home page content:', error);
-      } finally {
-        setMounted(true);
-      }
-    };
-
-    void loadContent();
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
-  if (!enabled) {
-    return null;
-  }
-
-  if (!content || content === '<p></p>') {
-    return null;
-  }
+  const content = homeContent.content || '';
+  if (!content || content === '<p></p>') return null;
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="mx-auto max-w-7xl px-4 py-8">
       <div
         className="rich-text max-w-none"
         dangerouslySetInnerHTML={{ __html: content }}

@@ -12,7 +12,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+} from 'react';
 
 import { SiteHeader } from '@/components/site-header';
 import { Badge } from '@/components/ui/badge';
@@ -25,11 +31,12 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { invalidateCurrency } from '@/hooks/useCurrency';
-import { STORE_LOGO_EVENT } from '@/hooks/useStoreLogo';
+import { STORE_LOGO_EVENT, invalidateStoreLogo } from '@/hooks/useStoreLogo';
 import { authApi, smsApi, storeApi, uploadApi, type Session } from '@/lib/api';
 import {
   AlertTriangle,
   CheckCircle2,
+  Clock,
   Save,
   ShieldAlert,
   ShieldBan,
@@ -99,9 +106,24 @@ const getInitials = (name: string) =>
     .join('')
     .toUpperCase();
 
+// Format an ISO timestamp as a friendly local date + time.
+const formatDateTime = (iso?: string | null) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString(undefined, {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState('profile');
   const [isSaving, setIsSaving] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
 
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -299,6 +321,7 @@ export default function SettingsPage() {
           address: data.settings.address || '',
         });
         document.title = data.settings.storeName || 'Apple IT Zone';
+        setLastUpdated(data.settings.updatedAt || null);
         setIsDirty(false);
       }
     } catch {
@@ -355,12 +378,17 @@ export default function SettingsPage() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await storeApi.update({ ...profileForm, ...businessDetails });
+      const { data } = await storeApi.update({
+        ...profileForm,
+        ...businessDetails,
+      });
       // Drop the cached currency so pages reflect a changed setting.
       invalidateCurrency();
       // Re-read the logo for the admin sidebar / storefront header.
+      invalidateStoreLogo();
       window.dispatchEvent(new Event(STORE_LOGO_EVENT));
       document.title = profileForm.storeName || 'Apple IT Zone';
+      setLastUpdated(data?.settings?.updatedAt || new Date().toISOString());
       toast.success('Settings saved');
       setIsDirty(false);
     } catch {
@@ -379,14 +407,23 @@ export default function SettingsPage() {
             <h2>{profileForm.storeName || 'Settings'}</h2>
             <p>Manage your store preferences and configuration</p>
           </div>
-          <Button
-            onClick={handleSave}
-            disabled={!isDirty || isSaving}
-            className="gap-2 mx-4 my-4"
-          >
-            <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
+          <div className="flex items-center gap-4 mx-4 my-4">
+            <div className="hidden text-right sm:block">
+              <p className="text-xs text-muted-foreground">Last updated</p>
+              <p className="flex items-center justify-end gap-1.5 text-xs font-medium text-foreground">
+                <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                {formatDateTime(lastUpdated)}
+              </p>
+            </div>
+            <Button
+              onClick={handleSave}
+              disabled={!isDirty || isSaving}
+              className="gap-2"
+            >
+              <Save className="h-4 w-4" />
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </Button>
+          </div>
         </div>
       </div>
 

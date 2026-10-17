@@ -5,8 +5,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
+import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, ShoppingBag, Trash2 } from 'lucide-react';
 import { useCart } from '@/store';
+import { useStoreStatus } from '@/components/store/StoreStatusProvider';
 import { CartItemCard } from '@/components/store/cart/CartItem';
 import { Button } from '@/components/button/Button';
 import RequireAuth from '@/components/store/layout/RequireAuth';
@@ -19,6 +21,7 @@ const listSpring = {
 
 const CartContent = () => {
   const { items, totalItems, totalPrice, clearCart } = useCart();
+  const { buyingEnabled, sellingMessage } = useStoreStatus();
   const router = useRouter();
   const [proceeding, setProceeding] = useState(false);
 
@@ -30,6 +33,12 @@ const CartContent = () => {
 
   const handleProceed = () => {
     if (proceeding) return;
+    if (!buyingEnabled) {
+      toast.error(
+        sellingMessage?.trim() || 'Buying is temporarily disabled right now.'
+      );
+      return;
+    }
     setProceeding(true);
     setTimeout(() => {
       router.push('/checkout');
@@ -197,16 +206,27 @@ const CartContent = () => {
                 </div>
               </dl>
 
-              <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.98 }}>
+              <motion.div
+                whileHover={{ scale: 1.01 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Button
                   variant="outline"
                   className="mt-5 w-full"
                   loading={proceeding}
                   onClick={handleProceed}
+                  disabled={!buyingEnabled}
                 >
-                  Proceed to Checkout
+                  {buyingEnabled ? 'Proceed to Checkout' : 'Buying Disabled'}
                 </Button>
               </motion.div>
+
+              {!buyingEnabled && (
+                <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-center text-xs font-medium text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                  {sellingMessage?.trim() ||
+                    'You can browse products, but checkout is disabled right now.'}
+                </p>
+              )}
 
               <motion.div whileHover={{ x: -3 }} transition={listSpring}>
                 <Link

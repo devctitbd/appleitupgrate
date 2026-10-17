@@ -2,9 +2,8 @@ import { MapPinCheck, Phone } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { FaFacebook, FaInstagram, FaWhatsapp, FaYoutube } from 'react-icons/fa';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { usePathname } from 'next/navigation';
-import { storeApi } from '@/lib/api';
+import { useResource } from '@/hooks/useResource';
+import { storePublicResource } from '@/lib/resources';
 
 type StoreInfo = {
   storeName: string;
@@ -14,33 +13,16 @@ type StoreInfo = {
 };
 
 const Footer = () => {
-  const pathname = usePathname();
-  const [info, setInfo] = useState<StoreInfo>({
-    storeName: 'Apple IT Zone',
-    email: 'info@appleitzone.com',
-    phone: '+8801712345678',
-    address: 'Head Office: 28 Kazi Nazrul Islam Ave, Navana Zohura Square, Dhaka 1000',
-  });
+  const { data: settings } = useResource(storePublicResource);
 
-  useEffect(() => {
-    let active = true;
-    storeApi
-      .getPublic()
-      .then(({ data }) => {
-        if (!active || !data.success) return;
-        const s = data.settings;
-        setInfo((prev) => ({
-          storeName: s.storeName || prev.storeName,
-          email: s.email || prev.email,
-          phone: s.phone || prev.phone,
-          address: (s.address ? 'Head Office: ' + s.address : prev.address),
-        }));
-      })
-      .catch(() => {});
-    return () => {
-      active = false;
-    };
-  }, [pathname]);
+  const info: StoreInfo = {
+    storeName: settings?.storeName || 'Apple IT Zone',
+    email: settings?.email || 'info@appleitzone.com',
+    phone: settings?.phone || '+8801712345678',
+    address: settings?.address
+      ? 'Head Office: ' + settings.address
+      : 'Head Office: 28 Kazi Nazrul Islam Ave, Navana Zohura Square, Dhaka 1000',
+  };
 
   return (
     <footer className="bg-slate-900 text-white mb-16 xl:mb-0 py-8">

@@ -67,15 +67,12 @@ import {
 } from '@/components/ui/alert-dialog';
 import Link from 'next/link';
 import { useWishlist, useCart, useAuth } from '@/store';
-import {
-  authApi,
-  orderApi,
-  paymentApi,
-  SavedAddress,
-} from '@/lib/api';
+import { useStoreStatus } from '@/components/store/StoreStatusProvider';
+import { authApi, orderApi, paymentApi, SavedAddress } from '@/lib/api';
 import RequireAuth from '@/components/store/layout/RequireAuth';
 
-type OrderStatus = 'pending' | 'processing' | 'confirmed' | 'send_courier' | 'cancelled';
+type OrderStatus =
+  'pending' | 'processing' | 'confirmed' | 'send_courier' | 'cancelled';
 type OrderItem = {
   name: string;
   price: number;
@@ -215,7 +212,12 @@ type TimelineStep = {
   state: 'done' | 'current' | 'upcoming';
 };
 
-const ORDER_STAGES = ['pending', 'processing', 'confirmed', 'send_courier'] as const;
+const ORDER_STAGES = [
+  'pending',
+  'processing',
+  'confirmed',
+  'send_courier',
+] as const;
 type Stage = (typeof ORDER_STAGES)[number];
 
 // Reconstruct the order journey from the order's current state.
@@ -273,7 +275,9 @@ function buildTimeline(o: Order, phone?: string): TimelineStep[] {
     steps.push({
       title: 'Payment Paid',
       description: `Payer Info: ${phone || '—'}${
-        pay.val_id ? ` · Gateway Status: ${pay.val_id}` : ' · Gateway Status: 0000'
+        pay.val_id
+          ? ` · Gateway Status: ${pay.val_id}`
+          : ' · Gateway Status: 0000'
       }`,
       date: fmtDate(pay.paidAt || o.date),
       state: 'done',
@@ -350,6 +354,7 @@ function AccountContent() {
   const [addressesLoading, setAddressesLoading] = useState(true);
   const { wishlist: wishItems, removeFromWishlist } = useWishlist();
   const { addItem } = useCart();
+  const { buyingEnabled, sellingMessage } = useStoreStatus();
   const wishlist: WishItem[] = wishItems.map((w) => ({
     id: w._id,
     name: w.name,
@@ -643,119 +648,122 @@ function AccountContent() {
                       transition={{ duration: 0.25 }}
                       className="space-y-3"
                     >
-                       {paginatedOrders.map((o) => {
-                  const meta = statusMeta[o.status] || statusMeta.pending;
-                  const Icon = meta.Icon;
-                  return (
-                    <div
-                      key={o.id}
-                      className="rounded-lg border bg-card p-4"
-                    >
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium">
-                              Order {o.orderNumber || o.id.slice(-6).toUpperCase()}
-                            </p>
-                            <Badge
-                              variant="secondary"
-                              className={meta.className}
-                            >
-                              <Icon className="mr-1 h-3 w-3" />
-                              {meta.label}
-                            </Badge>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <p className="font-semibold">
-                              ৳{o.total.toLocaleString()}
-                            </p>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => setViewOrder(o)}
-                            >
-                              View
-                            </Button>
-                          </div>
-                        </div>
-                      <p className="mt-1 text-xs text-gray-600">
-                        {new Date(o.date).toLocaleDateString()} · {o.items.length}{' '}
-                        item{o.items.length > 1 ? 's' : ''}
-                      </p>
-                      {o.coupon && o.coupon.discount > 0 && (
-                        <div className="mt-1 flex items-center justify-between text-xs">
-                          <span className="text-gray-600">
-                            Coupon ({o.coupon.code})
-                          </span>
-                          <span className="font-medium text-green-600">
-                            -৳{o.coupon.discount.toLocaleString()}
-                          </span>
-                        </div>
-                      )}
-                      <div className="mt-3 space-y-2">
-                        {o.items.map((it, idx) => (
+                      {paginatedOrders.map((o) => {
+                        const meta = statusMeta[o.status] || statusMeta.pending;
+                        const Icon = meta.Icon;
+                        return (
                           <div
-                            key={idx}
-                            className="flex items-center gap-3 rounded-md border p-2"
+                            key={o.id}
+                            className="rounded-lg border bg-card p-4"
                           >
-                            {it.image ? (
-                              <img
-                                src={it.image}
-                                alt={it.name}
-                                className="h-14 w-14 shrink-0 rounded-md border object-cover"
-                              />
-                            ) : (
-                              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-gray-100">
-                                <Package className="h-5 w-5 text-gray-600" />
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium">
+                                  Order{' '}
+                                  {o.orderNumber ||
+                                    o.id.slice(-6).toUpperCase()}
+                                </p>
+                                <Badge
+                                  variant="secondary"
+                                  className={meta.className}
+                                >
+                                  <Icon className="mr-1 h-3 w-3" />
+                                  {meta.label}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <p className="font-semibold">
+                                  ৳{o.total.toLocaleString()}
+                                </p>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => setViewOrder(o)}
+                                >
+                                  View
+                                </Button>
+                              </div>
+                            </div>
+                            <p className="mt-1 text-xs text-gray-600">
+                              {new Date(o.date).toLocaleDateString()} ·{' '}
+                              {o.items.length} item
+                              {o.items.length > 1 ? 's' : ''}
+                            </p>
+                            {o.coupon && o.coupon.discount > 0 && (
+                              <div className="mt-1 flex items-center justify-between text-xs">
+                                <span className="text-gray-600">
+                                  Coupon ({o.coupon.code})
+                                </span>
+                                <span className="font-medium text-green-600">
+                                  -৳{o.coupon.discount.toLocaleString()}
+                                </span>
                               </div>
                             )}
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium">
-                                {it.name}
-                              </p>
-                              <p className="text-xs text-gray-600">
-                                {it.quantity} × ৳{it.price.toLocaleString()}
-                              </p>
+                            <div className="mt-3 space-y-2">
+                              {o.items.map((it, idx) => (
+                                <div
+                                  key={idx}
+                                  className="flex items-center gap-3 rounded-md border p-2"
+                                >
+                                  {it.image ? (
+                                    <img
+                                      src={it.image}
+                                      alt={it.name}
+                                      className="h-14 w-14 shrink-0 rounded-md border object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-md bg-gray-100">
+                                      <Package className="h-5 w-5 text-gray-600" />
+                                    </div>
+                                  )}
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate text-sm font-medium">
+                                      {it.name}
+                                    </p>
+                                    <p className="text-xs text-gray-600">
+                                      {it.quantity} × ৳
+                                      {it.price.toLocaleString()}
+                                    </p>
+                                  </div>
+                                  <p className="text-sm font-medium">
+                                    ৳{(it.price * it.quantity).toLocaleString()}
+                                  </p>
+                                </div>
+                              ))}
                             </div>
-                            <p className="text-sm font-medium">
-                              ৳
-                              {(it.price * it.quantity).toLocaleString()}
-                            </p>
+                            {o.advanceAmount ? (
+                              <div className="mt-3 rounded-md border border-dashed bg-gray-50 p-3">
+                                {o.advancePaid &&
+                                o.advancePaid >= o.advanceAmount ? (
+                                  <p className="text-xs text-green-600">
+                                    Advance paid: ৳
+                                    {o.advancePaid.toLocaleString()} · Due on
+                                    delivery: ৳
+                                    {(
+                                      o.total - (o.advancePaid || 0)
+                                    ).toLocaleString()}
+                                  </p>
+                                ) : (
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <p className="text-xs text-gray-600">
+                                      Confirm this order with a ৳
+                                      {o.advanceAmount.toLocaleString()} advance
+                                      (deducted from delivery total).
+                                    </p>
+                                    <Button
+                                      size="sm"
+                                      onClick={() => payAdvance(o)}
+                                    >
+                                      Pay ৳{o.advanceAmount.toLocaleString()}{' '}
+                                      advance
+                                    </Button>
+                                  </div>
+                                )}
+                              </div>
+                            ) : null}
                           </div>
-                        ))}
-                      </div>
-                      {o.advanceAmount ? (
-                        <div className="mt-3 rounded-md border border-dashed bg-gray-50 p-3">
-                          {o.advancePaid &&
-                          o.advancePaid >= o.advanceAmount ? (
-                            <p className="text-xs text-green-600">
-                              Advance paid: ৳
-                              {o.advancePaid.toLocaleString()} · Due on
-                              delivery: ৳
-                              {(
-                                o.total - (o.advancePaid || 0)
-                              ).toLocaleString()}
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="text-xs text-gray-600">
-                                Confirm this order with a ৳
-                                {o.advanceAmount.toLocaleString()} advance
-                                (deducted from delivery total).
-                              </p>
-                              <Button
-                                size="sm"
-                                onClick={() => payAdvance(o)}
-                              >
-                                Pay ৳{o.advanceAmount.toLocaleString()}{' '}
-                                advance
-                              </Button>
-                            </div>
-                          )}
-                        </div>
-                      ) : null}
-                      </div>
-                      );
-                    })}
+                        );
+                      })}
                     </motion.div>
 
                     {totalOrderPages > 1 && (
@@ -861,8 +869,15 @@ function AccountContent() {
                             <Button
                               size="sm"
                               className="flex-1"
-                              disabled={!w.inStock}
+                              disabled={!w.inStock || !buyingEnabled}
                               onClick={() => {
+                                if (!buyingEnabled) {
+                                  toast.error(
+                                    sellingMessage?.trim() ||
+                                      'Buying is temporarily disabled right now.'
+                                  );
+                                  return;
+                                }
                                 addItem({
                                   productId: w.id,
                                   name: w.name,
@@ -955,9 +970,7 @@ function AccountContent() {
                           </p>
                           <p>{a.phone}</p>
                           <p>{a.line1}</p>
-                          {a.deliveryArea && (
-                            <p>Area: {a.deliveryArea}</p>
-                          )}
+                          {a.deliveryArea && <p>Area: {a.deliveryArea}</p>}
                           <p>
                             {a.city}, {a.region} {a.postal}
                           </p>
@@ -1540,10 +1553,7 @@ function OrderViewDialog({
   const meta = statusMeta[order.status] || statusMeta.pending;
   const Icon = meta.Icon;
   const steps = buildTimeline(order, phone);
-  const subtotal = order.items.reduce(
-    (s, it) => s + it.price * it.quantity,
-    0
-  );
+  const subtotal = order.items.reduce((s, it) => s + it.price * it.quantity, 0);
   const couponDiscount = order.coupon?.discount || 0;
   const advancePaid = order.advancePaid || 0;
   const due = Math.max(0, order.total - advancePaid);
@@ -1561,9 +1571,7 @@ function OrderViewDialog({
               {meta.label}
             </Badge>
           </div>
-          <DialogDescription>
-            Placed on {fmtDate(order.date)}
-          </DialogDescription>
+          <DialogDescription>Placed on {fmtDate(order.date)}</DialogDescription>
         </DialogHeader>
 
         <div className="grid gap-6 md:grid-cols-3">
@@ -1645,9 +1653,7 @@ function OrderViewDialog({
                   </div>
                   {advancePaid > 0 && due > 0 && (
                     <div className="flex justify-between">
-                      <span className="text-gray-600">
-                        Due on delivery
-                      </span>
+                      <span className="text-gray-600">Due on delivery</span>
                       <span>৳{due.toLocaleString()}</span>
                     </div>
                   )}
@@ -1702,8 +1708,8 @@ function OrderViewDialog({
                   s.state === 'done'
                     ? 'border-green-500 bg-green-500 text-white'
                     : s.state === 'current'
-                    ? 'border-blue-500 bg-blue-500 text-white'
-                    : 'border-muted-foreground/30 bg-background text-gray-600';
+                      ? 'border-blue-500 bg-blue-500 text-white'
+                      : 'border-muted-foreground/30 bg-background text-gray-600';
                 return (
                   <li key={i} className="flex gap-3">
                     <div className="flex flex-col items-center">
@@ -1718,16 +1724,12 @@ function OrderViewDialog({
                           <span className="h-1.5 w-1.5 rounded-full bg-current" />
                         )}
                       </span>
-                      {!last && (
-                        <span className="my-1 w-px flex-1 bg-border" />
-                      )}
+                      {!last && <span className="my-1 w-px flex-1 bg-border" />}
                     </div>
                     <div className={last ? 'pb-0' : 'pb-4'}>
                       <p className="text-sm font-medium">{s.title}</p>
                       {s.description && (
-                        <p className="text-xs text-gray-600">
-                          {s.description}
-                        </p>
+                        <p className="text-xs text-gray-600">{s.description}</p>
                       )}
                       {s.date && (
                         <p className="mt-0.5 text-xs text-gray-600/70">

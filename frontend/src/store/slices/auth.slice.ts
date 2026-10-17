@@ -1,7 +1,8 @@
 // src/store/slices/auth.slice.ts
 import { StateCreator } from 'zustand';
 import { User, LoginCredentials, RegisterCredentials } from '@/types/user';
-import api from '@/lib/http';
+import { apiFetch } from '@/lib/http';
+import { meResource } from '@/lib/resources';
 
 export interface AuthSlice {
   user: User | null;
@@ -21,10 +22,16 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
   login: async (credentials: LoginCredentials) => {
     set({ isLoading: true });
     try {
-      const response = await api.post('/auth/login', credentials);
+      const response = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: credentials,
+      });
       if (response.data.success) {
+        const user = response.data.user as User;
+        // Refresh the shared session cache so other callers see the new user.
+        meResource.set({ user });
         set({
-          user: response.data.user,
+          user,
           isAuthenticated: true,
           isLoading: false,
         });
@@ -38,10 +45,15 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
   register: async (credentials: RegisterCredentials) => {
     set({ isLoading: true });
     try {
-      const response = await api.post('/auth/register', credentials);
+      const response = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: credentials,
+      });
       if (response.data.success) {
+        const user = response.data.user as User;
+        meResource.set({ user });
         set({
-          user: response.data.user,
+          user,
           isAuthenticated: true,
           isLoading: false,
         });
@@ -54,30 +66,31 @@ export const createAuthSlice: StateCreator<AuthSlice> = (set) => ({
 
   logout: async () => {
     try {
-      await api.post('/auth/logout');
+      await apiFetch('/auth/logout', { method: 'POST' });
     } finally {
+      meResource.set({ user: null });
       set({
         user: null,
         isAuthenticated: false,
         isLoading: false,
       });
-      // Optionally clear cart or other stores
     }
   },
 
+  /**
+   * Resolve the current session user. Backed by the shared `meResource`, so
+   * multiple callers on the same page load (ClientLayout, RequireAuth, ...)
+   * produce a single `/auth/me` request.
+   */
   fetchUser: async () => {
     set({ isLoading: true });
     try {
-      const response = await api.get('/auth/me');
-      if (response.data.success) {
-        set({
-          user: response.data.user,
-          isAuthenticated: true,
-          isLoading: false,
-        });
-      } else {
-        set({ user: null, isAuthenticated: false, isLoading: false });
-      }
+      const { user } = await meResource.get();
+      set({
+        user,
+        isAuthenticated: !!user,
+        isLoading: false,
+      });
     } catch {
       set({ user: null, isAuthenticated: false, isLoading: false });
     }

@@ -1,19 +1,24 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useStoreStatus } from '@/components/store/StoreStatusProvider';
 import { useAuth } from '@/store';
-import { useMaintenance } from '@/hooks/use-maintenance';
+import { usePathname, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 // Always allow access to auth pages during maintenance so the super admin can
 // log back in (they are redirected to the dashboard right after login).
-const AUTH_ROUTES = ['/login', '/register', '/forgot-password', '/reset-password'];
+const AUTH_ROUTES = [
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+];
 
 export function MaintenanceGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
-  const { enabled } = useMaintenance();
+  const { maintenanceEnabled: enabled } = useStoreStatus();
 
   const isSuperAdmin = user?.role === 'super_admin';
 

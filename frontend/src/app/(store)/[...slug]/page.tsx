@@ -2,8 +2,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { notFound } from 'next/navigation';
-import { categoryApi, productApi } from '@/lib/api';
+import { productApi } from '@/lib/api';
 import type { Category } from '@/lib/api';
+import { categoriesResource } from '@/lib/resources';
 import { toProductShape, type RawProduct } from '@/lib/productMapper';
 import { ProductGrid } from '@/components/store/product/ProductGrid';
 import { ProductGridSkeleton } from '@/components/store/product/ProductGridSkeleton';
@@ -101,11 +102,11 @@ export default function CategoryPage({ params }: Props) {
       const resolved = await params;
       setSlug(resolved.slug || []);
       try {
-        const [catRes, prodRes] = await Promise.all([
-          categoryApi.getAll(),
+        const [cats, prodRes] = await Promise.all([
+          categoriesResource.get(),
           productApi.getAll({ limit: 1000 }),
         ]);
-        setCategories(catRes.data.categories || []);
+        setCategories(cats || []);
         setProducts(prodRes.data.products || []);
       } catch {
         // leave empty on failure

@@ -1,4 +1,4 @@
-import api from './http';
+import { apiFetch } from './http';
 
 export type AuditLog = {
   _id: string;
@@ -19,7 +19,7 @@ export const auditApi = {
     role?: string;
     status?: string;
   }) =>
-    api.get<{
+    apiFetch<{
       success: boolean;
       logs: AuditLog[];
       total: number;
@@ -32,17 +32,17 @@ export const uploadApi = {
   image: (file: File) => {
     const fd = new FormData();
     fd.append('image', file);
-    return api.post<{ success: boolean; url: string; publicId?: string }>(
+    return apiFetch<{ success: boolean; url: string; publicId?: string }>(
       '/upload/image',
-      fd
+      { method: 'POST', body: fd }
     );
   },
   logo: (file: File) => {
     const fd = new FormData();
     fd.append('image', file);
-    return api.post<{ success: boolean; url: string; publicId?: string }>(
+    return apiFetch<{ success: boolean; url: string; publicId?: string }>(
       '/upload/logo',
-      fd
+      { method: 'POST', body: fd }
     );
   },
 };
@@ -94,36 +94,41 @@ function toFormData(
 
 export const categoryApi = {
   getAll: () =>
-    api.get<{ success: boolean; categories: Category[] }>('/categories'),
+    apiFetch<{ success: boolean; categories: Category[] }>('/categories'),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; category: Category }>(`/categories/${id}`),
+    apiFetch<{ success: boolean; category: Category }>(`/categories/${id}`),
 
   create: (
     data: CategoryForm,
     files?: { image?: File | null; banner?: File | null }
   ) =>
-    api.post<{ success: boolean; category: Category }>(
-      '/categories',
-      toFormData(data as any, files)
-    ),
+    apiFetch<{ success: boolean; category: Category }>('/categories', {
+      method: 'POST',
+      body: toFormData(data as any, files),
+    }),
 
   update: (
     id: string,
     data: Partial<CategoryForm>,
     files?: { image?: File | null; banner?: File | null }
   ) =>
-    api.put<{ success: boolean; category: Category }>(
-      `/categories/${id}`,
-      toFormData(data as any, files)
-    ),
+    apiFetch<{ success: boolean; category: Category }>(`/categories/${id}`, {
+      method: 'PUT',
+      body: toFormData(data as any, files),
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/categories/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/categories/${id}`, {
+      method: 'DELETE',
+    }),
 
   reorder: (orders: { id: string; sortOrder: number }[]) =>
-    api.put<{ success: boolean; message: string }>('/categories/reorder', {
-      orders,
+    apiFetch<{ success: boolean; message: string }>('/categories/reorder', {
+      method: 'PUT',
+      body: {
+        orders,
+      },
     }),
 };
 
@@ -169,36 +174,41 @@ export type SliderForm = {
 
 export const sliderApi = {
   getAll: (params?: { active?: boolean }) =>
-    api.get<{ success: boolean; sliders: Slider[] }>('/sliders', {
+    apiFetch<{ success: boolean; sliders: Slider[] }>('/sliders', {
       params: params
         ? { active: params.active ? 'true' : undefined }
         : undefined,
     }),
 
   create: (data: SliderForm, image?: File | null) =>
-    api.post<{ success: boolean; slider: Slider }>(
-      '/sliders',
-      toFormData(data as any, { image })
-    ),
+    apiFetch<{ success: boolean; slider: Slider }>('/sliders', {
+      method: 'POST',
+      body: toFormData(data as any, { image }),
+    }),
 
   update: (id: string, data: Partial<SliderForm>, image?: File | null) =>
-    api.put<{ success: boolean; slider: Slider }>(
-      `/sliders/${id}`,
-      toFormData(data as any, { image })
-    ),
+    apiFetch<{ success: boolean; slider: Slider }>(`/sliders/${id}`, {
+      method: 'PUT',
+      body: toFormData(data as any, { image }),
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/sliders/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/sliders/${id}`, {
+      method: 'DELETE',
+    }),
 
   reorder: (orders: { id: string; sortOrder: number }[]) =>
-    api.put<{ success: boolean; message: string }>('/sliders/reorder', {
-      orders,
+    apiFetch<{ success: boolean; message: string }>('/sliders/reorder', {
+      method: 'PUT',
+      body: {
+        orders,
+      },
     }),
 };
 
 export const homeSliderTextApi = {
   getAll: (params?: { active?: boolean }) =>
-    api.get<{ success: boolean; texts: HomeSliderText[] }>(
+    apiFetch<{ success: boolean; texts: HomeSliderText[] }>(
       '/home-slider-texts',
       {
         params: params
@@ -208,27 +218,31 @@ export const homeSliderTextApi = {
     ),
 
   create: (data: HomeSliderTextForm) =>
-    api.post<{ success: boolean; text: HomeSliderText }>(
-      '/home-slider-texts',
-      data
-    ),
+    apiFetch<{ success: boolean; text: HomeSliderText }>('/home-slider-texts', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: Partial<HomeSliderTextForm>) =>
-    api.put<{ success: boolean; text: HomeSliderText }>(
+    apiFetch<{ success: boolean; text: HomeSliderText }>(
       `/home-slider-texts/${id}`,
-      data
+      { method: 'PUT', body: data }
     ),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(
-      `/home-slider-texts/${id}`
+    apiFetch<{ success: boolean; message: string }>(
+      `/home-slider-texts/${id}`,
+      { method: 'DELETE' }
     ),
 
   reorder: (orders: { id: string; sortOrder: number }[]) =>
-    api.put<{ success: boolean; message: string }>(
+    apiFetch<{ success: boolean; message: string }>(
       '/home-slider-texts/reorder',
       {
-        orders,
+        method: 'PUT',
+        body: {
+          orders,
+        },
       }
     ),
 };
@@ -239,14 +253,14 @@ export type HomeSliderSetting = {
 
 export const homeSliderSettingApi = {
   get: () =>
-    api.get<{ success: boolean; setting: HomeSliderSetting }>(
+    apiFetch<{ success: boolean; setting: HomeSliderSetting }>(
       '/home-slider-texts/setting'
     ),
 
   update: (data: { enabled: boolean }) =>
-    api.put<{ success: boolean; setting: HomeSliderSetting }>(
+    apiFetch<{ success: boolean; setting: HomeSliderSetting }>(
       '/home-slider-texts/setting',
-      data
+      { method: 'PUT', body: data }
     ),
 };
 
@@ -299,7 +313,7 @@ export type PhysicalStoreSetting = {
 
 export const physicalStoreApi = {
   getAll: (params?: { active?: boolean }) =>
-    api.get<{ success: boolean; stores: PhysicalStore[] }>(
+    apiFetch<{ success: boolean; stores: PhysicalStore[] }>(
       '/physical-stores',
       {
         params: params
@@ -309,32 +323,32 @@ export const physicalStoreApi = {
     ),
 
   create: (data: PhysicalStoreForm) =>
-    api.post<{ success: boolean; store: PhysicalStore }>(
-      '/physical-stores',
-      data
-    ),
+    apiFetch<{ success: boolean; store: PhysicalStore }>('/physical-stores', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: Partial<PhysicalStoreForm>) =>
-    api.put<{ success: boolean; store: PhysicalStore }>(
+    apiFetch<{ success: boolean; store: PhysicalStore }>(
       `/physical-stores/${id}`,
-      data
+      { method: 'PUT', body: data }
     ),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(
-      `/physical-stores/${id}`
-    ),
+    apiFetch<{ success: boolean; message: string }>(`/physical-stores/${id}`, {
+      method: 'DELETE',
+    }),
 
   reorder: (orders: { id: string; sortOrder: number }[]) =>
-    api.put<{ success: boolean; message: string }>(
+    apiFetch<{ success: boolean; message: string }>(
       '/physical-stores/reorder',
-      { orders }
+      { method: 'PUT', body: { orders } }
     ),
 };
 
 export const physicalStoreSettingApi = {
   get: () =>
-    api.get<{ success: boolean; setting: PhysicalStoreSetting }>(
+    apiFetch<{ success: boolean; setting: PhysicalStoreSetting }>(
       '/physical-stores/setting'
     ),
 
@@ -344,9 +358,9 @@ export const physicalStoreSettingApi = {
       if (value !== undefined && value !== null) fd.append(key, String(value));
     }
     if (banner) fd.append('image', banner);
-    return api.put<{ success: boolean; setting: PhysicalStoreSetting }>(
+    return apiFetch<{ success: boolean; setting: PhysicalStoreSetting }>(
       '/physical-stores/setting',
-      fd
+      { method: 'PUT', body: fd }
     );
   },
 };
@@ -361,16 +375,18 @@ export type HomeContent = {
 
 export const homeContentApi = {
   get: () =>
-    api.get<{ success: boolean; homeContent: HomeContent }>('/home-content'),
+    apiFetch<{ success: boolean; homeContent: HomeContent }>('/home-content'),
 
   update: (data: { content: string; enabled: boolean }) =>
-    api.put<{ success: boolean; homeContent: HomeContent }>(
-      '/home-content',
-      data
-    ),
+    apiFetch<{ success: boolean; homeContent: HomeContent }>('/home-content', {
+      method: 'PUT',
+      body: data,
+    }),
 
   delete: () =>
-    api.delete<{ success: boolean; message: string }>('/home-content'),
+    apiFetch<{ success: boolean; message: string }>('/home-content', {
+      method: 'DELETE',
+    }),
 };
 
 export type PopupOffer = {
@@ -385,10 +401,13 @@ export type PopupOffer = {
 
 export const popupOfferApi = {
   get: () =>
-    api.get<{ success: boolean; popupOffer: PopupOffer }>('/popup-offer'),
+    apiFetch<{ success: boolean; popupOffer: PopupOffer }>('/popup-offer'),
 
   update: (data: FormData) =>
-    api.put<{ success: boolean; popupOffer: PopupOffer }>('/popup-offer', data),
+    apiFetch<{ success: boolean; popupOffer: PopupOffer }>('/popup-offer', {
+      method: 'PUT',
+      body: data,
+    }),
 };
 
 export type AdminUser = {
@@ -418,10 +437,10 @@ export const userApi = {
     search?: string;
     role?: string;
     status?: string;
-  }) => api.get<PaginatedResponse<AdminUser>>('/users', { params }),
+  }) => apiFetch<PaginatedResponse<AdminUser>>('/users', { params }),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; user: AdminUser }>(`/users/${id}`),
+    apiFetch<{ success: boolean; user: AdminUser }>(`/users/${id}`),
 
   create: (data: {
     name: string;
@@ -430,7 +449,11 @@ export const userApi = {
     phone?: string;
     role?: string;
     status?: string;
-  }) => api.post<{ success: boolean; user: AdminUser }>('/users', data),
+  }) =>
+    apiFetch<{ success: boolean; user: AdminUser }>('/users', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (
     id: string,
@@ -442,10 +465,16 @@ export const userApi = {
       status: string;
       password: string;
     }>
-  ) => api.put<{ success: boolean; user: AdminUser }>(`/users/${id}`, data),
+  ) =>
+    apiFetch<{ success: boolean; user: AdminUser }>(`/users/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/users/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/users/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 export type Customer = {
@@ -481,13 +510,15 @@ export const customerApi = {
     limit?: number;
     search?: string;
     status?: string;
-  }) => api.get<CustomerPaginatedResponse>('/customers', { params }),
+  }) => apiFetch<CustomerPaginatedResponse>('/customers', { params }),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; customer: Customer }>(`/customers/${id}`),
+    apiFetch<{ success: boolean; customer: Customer }>(`/customers/${id}`),
 
   remove: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/customers/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/customers/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 export type TeamMember = {
@@ -511,7 +542,7 @@ export type TeamMemberPayload = {
 };
 
 export const teamApi = {
-  getAll: () => api.get<{ success: boolean; members: TeamMember[] }>('/team'),
+  getAll: () => apiFetch<{ success: boolean; members: TeamMember[] }>('/team'),
 
   create: (data: {
     name: string;
@@ -519,13 +550,22 @@ export const teamApi = {
     role: string;
     password?: string;
     active?: boolean;
-  }) => api.post<{ success: boolean; member: TeamMember }>('/team', data),
+  }) =>
+    apiFetch<{ success: boolean; member: TeamMember }>('/team', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: TeamMemberPayload) =>
-    api.put<{ success: boolean; member: TeamMember }>(`/team/${id}`, data),
+    apiFetch<{ success: boolean; member: TeamMember }>(`/team/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/team/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/team/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 export type Session = {
@@ -556,14 +596,19 @@ export type StoreSettings = {
   address: string;
   metaTitle?: string;
   metaDescription?: string;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
 export const storeApi = {
-  get: () => api.get<{ success: boolean; settings: StoreSettings }>('/store'),
+  get: () => apiFetch<{ success: boolean; settings: StoreSettings }>('/store'),
   getPublic: () =>
-    api.get<{ success: boolean; settings: StoreSettings }>('/store/public'),
+    apiFetch<{ success: boolean; settings: StoreSettings }>('/store/public'),
   update: (data: Partial<StoreSettings>) =>
-    api.put<{ success: boolean; settings: StoreSettings }>('/store', data),
+    apiFetch<{ success: boolean; settings: StoreSettings }>('/store', {
+      method: 'PUT',
+      body: data,
+    }),
 };
 
 export type PaymentGateway = {
@@ -575,20 +620,20 @@ export type PaymentGateway = {
 
 export const paymentSettingsApi = {
   getAll: () =>
-    api.get<{ success: boolean; gateways: PaymentGateway[] }>(
+    apiFetch<{ success: boolean; gateways: PaymentGateway[] }>(
       '/payment-settings'
     ),
   getActive: () =>
-    api.get<{ success: boolean; gateways: ActivePaymentGateway[] }>(
+    apiFetch<{ success: boolean; gateways: ActivePaymentGateway[] }>(
       '/payment-settings/active'
     ),
   update: (
     id: string,
     data: { enabled?: boolean; config?: Record<string, any> }
   ) =>
-    api.put<{ success: boolean; gateway: PaymentGateway }>(
+    apiFetch<{ success: boolean; gateway: PaymentGateway }>(
       `/payment-settings/${id}`,
-      data
+      { method: 'PUT', body: data }
     ),
 };
 
@@ -614,13 +659,13 @@ export const paymentApi = {
     };
     advance?: boolean;
   }) =>
-    api.post<{
+    apiFetch<{
       success: boolean;
       gatewayUrl: string;
       tran_id: string;
       advance?: boolean;
       message?: string;
-    }>('/payment/initiate', data),
+    }>('/payment/initiate', { method: 'POST', body: data }),
   validate: (data: {
     tran_id: string;
     val_id?: string;
@@ -628,14 +673,14 @@ export const paymentApi = {
     amount?: number;
     card_type?: string;
   }) =>
-    api.post<{
+    apiFetch<{
       success: boolean;
       valid: boolean;
       advance?: boolean;
       order?: string;
-    }>('/payment/validate', data),
+    }>('/payment/validate', { method: 'POST', body: data }),
   queryTransaction: (tran_id: string) =>
-    api.get<{
+    apiFetch<{
       success: boolean;
       gatewayStatus?: string;
       paymentStatus?: string;
@@ -644,7 +689,10 @@ export const paymentApi = {
       order?: string;
     }>(`/payment/transaction/${tran_id}`),
   cancel: (data: { tran_id: string }) =>
-    api.post<{ success: boolean; message: string }>('/payment/cancel', data),
+    apiFetch<{ success: boolean; message: string }>('/payment/cancel', {
+      method: 'POST',
+      body: data,
+    }),
 };
 
 export type ActiveTeamMember = {
@@ -685,59 +733,68 @@ export type SavedAddress = {
 };
 
 export const authApi = {
-  getMe: () => api.get<{ success: boolean; user: AuthMe }>('/auth/me'),
+  getMe: () => apiFetch<{ success: boolean; user: AuthMe }>('/auth/me'),
 
   updateProfile: (data: {
     name?: string;
     phone?: string;
     address?: Partial<AuthMe['address']>;
-  }) => api.put<{ success: boolean; user: AuthMe }>('/auth/me', data),
+  }) =>
+    apiFetch<{ success: boolean; user: AuthMe }>('/auth/me', {
+      method: 'PUT',
+      body: data,
+    }),
 
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    api.put<{ success: boolean; message: string }>('/auth/me/password', data),
+    apiFetch<{ success: boolean; message: string }>('/auth/me/password', {
+      method: 'PUT',
+      body: data,
+    }),
 
   getSessions: () =>
-    api.get<{ success: boolean; sessions: Session[] }>('/auth/me/sessions'),
+    apiFetch<{ success: boolean; sessions: Session[] }>('/auth/me/sessions'),
 
   revokeSession: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(
-      `/auth/me/sessions/${id}`
-    ),
+    apiFetch<{ success: boolean; message: string }>(`/auth/me/sessions/${id}`, {
+      method: 'DELETE',
+    }),
 
   getAddresses: () =>
-    api.get<{ success: boolean; addresses: SavedAddress[] }>(
+    apiFetch<{ success: boolean; addresses: SavedAddress[] }>(
       '/auth/me/addresses'
     ),
 
   addAddress: (data: Partial<SavedAddress>) =>
-    api.post<{ success: boolean; addresses: SavedAddress[] }>(
+    apiFetch<{ success: boolean; addresses: SavedAddress[] }>(
       '/auth/me/addresses',
-      data
+      { method: 'POST', body: data }
     ),
 
   updateAddress: (id: string, data: Partial<SavedAddress>) =>
-    api.put<{ success: boolean; addresses: SavedAddress[] }>(
+    apiFetch<{ success: boolean; addresses: SavedAddress[] }>(
       `/auth/me/addresses/${id}`,
-      data
+      { method: 'PUT', body: data }
     ),
 
   deleteAddress: (id: string) =>
-    api.delete<{ success: boolean; addresses: SavedAddress[] }>(
-      `/auth/me/addresses/${id}`
+    apiFetch<{ success: boolean; addresses: SavedAddress[] }>(
+      `/auth/me/addresses/${id}`,
+      { method: 'DELETE' }
     ),
 
   setDefaultAddress: (id: string) =>
-    api.put<{ success: boolean; addresses: SavedAddress[] }>(
-      `/auth/me/addresses/${id}/default`
+    apiFetch<{ success: boolean; addresses: SavedAddress[] }>(
+      `/auth/me/addresses/${id}/default`,
+      { method: 'PUT' }
     ),
 
   verifyOtp: (data: { pendingToken: string; otp: string }) =>
-    api.post<{
+    apiFetch<{
       success: boolean;
       token?: string;
       user?: AuthMe;
       message?: string;
-    }>('/auth/verify-otp', data),
+    }>('/auth/verify-otp', { method: 'POST', body: data }),
 };
 
 export type LoginResponse = {
@@ -809,17 +866,17 @@ export type OrderStats = {
 
 export const orderApi = {
   getMyOrders: () =>
-    api.get<{ success: boolean; orders: Order[] }>('/orders/my-orders'),
+    apiFetch<{ success: boolean; orders: Order[] }>('/orders/my-orders'),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; order: Order }>(`/orders/${id}`),
+    apiFetch<{ success: boolean; order: Order }>(`/orders/${id}`),
   getAllOrders: (params?: {
     page?: number;
     limit?: number;
     status?: string;
     search?: string;
   }) =>
-    api.get<{
+    apiFetch<{
       success: boolean;
       total: number;
       page: number;
@@ -828,20 +885,23 @@ export const orderApi = {
     }>('/orders', { params }),
 
   getStats: () =>
-    api.get<{ success: boolean; stats: OrderStats }>('/orders/stats'),
+    apiFetch<{ success: boolean; stats: OrderStats }>('/orders/stats'),
 
   updateStatus: (id: string, status: OrderStatus) =>
-    api.put<{ success: boolean; order: Order }>(`/orders/${id}/status`, {
-      status,
+    apiFetch<{ success: boolean; order: Order }>(`/orders/${id}/status`, {
+      method: 'PUT',
+      body: {
+        status,
+      },
     }),
 
   updatePaymentStatus: (
     id: string,
     status: 'pending' | 'paid' | 'failed' | 'cancelled'
   ) =>
-    api.put<{ success: boolean; order: Order }>(
+    apiFetch<{ success: boolean; order: Order }>(
       `/orders/${id}/payment-status`,
-      { status }
+      { method: 'PUT', body: { status } }
     ),
 
   updateAdvance: (
@@ -852,7 +912,10 @@ export const orderApi = {
       advanceReference?: string;
     }
   ) =>
-    api.put<{ success: boolean; order: Order }>(`/orders/${id}/advance`, data),
+    apiFetch<{ success: boolean; order: Order }>(`/orders/${id}/advance`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   create: (data: {
     items: { product: string; quantity: number }[];
@@ -860,7 +923,11 @@ export const orderApi = {
     paymentMethod: string;
     note?: string;
     couponCode?: string;
-  }) => api.post<{ success: boolean; order: Order }>('/orders', data),
+  }) =>
+    apiFetch<{ success: boolean; order: Order }>('/orders', {
+      method: 'POST',
+      body: data,
+    }),
 
   adminCreate: (data: {
     customerId: string;
@@ -873,7 +940,7 @@ export const orderApi = {
     couponCode?: string;
     shippingFee?: number;
   }) =>
-    api.post<{
+    apiFetch<{
       success: boolean;
       order: Order;
       summary: {
@@ -882,7 +949,7 @@ export const orderApi = {
         couponDiscount: number;
         totalAmount: number;
       };
-    }>('/orders/admin-create', data),
+    }>('/orders/admin-create', { method: 'POST', body: data }),
 };
 
 export type InvoiceStatus = 'paid' | 'pending' | 'overdue' | 'cancelled';
@@ -938,7 +1005,7 @@ export const invoiceApi = {
     search?: string;
     status?: string;
   }) =>
-    api.get<{
+    apiFetch<{
       success: boolean;
       total: number;
       page: number;
@@ -947,24 +1014,32 @@ export const invoiceApi = {
     }>('/invoices', { params }),
 
   getStats: () =>
-    api.get<{ success: boolean; stats: InvoiceStats }>('/invoices/stats'),
+    apiFetch<{ success: boolean; stats: InvoiceStats }>('/invoices/stats'),
 
   get: (id: string) =>
-    api.get<{ success: boolean; invoice: Invoice }>(`/invoices/${id}`),
+    apiFetch<{ success: boolean; invoice: Invoice }>(`/invoices/${id}`),
 
   update: (id: string, data: Record<string, unknown>) =>
-    api.put<{ success: boolean; invoice: Invoice }>(`/invoices/${id}`, data),
+    apiFetch<{ success: boolean; invoice: Invoice }>(`/invoices/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   remove: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/invoices/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/invoices/${id}`, {
+      method: 'DELETE',
+    }),
 
   generateFromOrder: (orderId: string) =>
-    api.post<{ success: boolean; invoice: Invoice }>(
-      `/invoices/order/${orderId}`
+    apiFetch<{ success: boolean; invoice: Invoice }>(
+      `/invoices/order/${orderId}`,
+      { method: 'POST' }
     ),
 
   syncFromOrders: () =>
-    api.post<{ success: boolean; created: number }>('/invoices/sync'),
+    apiFetch<{ success: boolean; created: number }>('/invoices/sync', {
+      method: 'POST',
+    }),
 };
 
 export type DashboardStats = {
@@ -994,7 +1069,7 @@ export type DashboardStats = {
 
 export const dashboardApi = {
   getStats: () =>
-    api.get<{ success: boolean; stats: DashboardStats }>('/dashboard'),
+    apiFetch<{ success: boolean; stats: DashboardStats }>('/dashboard'),
 };
 
 export type AnalyticsPoint = {
@@ -1044,7 +1119,7 @@ export type AnalyticsStats = {
 
 export const analyticsApi = {
   getStats: () =>
-    api.get<{ success: boolean; data: AnalyticsStats }>('/analytics'),
+    apiFetch<{ success: boolean; data: AnalyticsStats }>('/analytics'),
 };
 
 export type VisitorOverview = {
@@ -1068,9 +1143,12 @@ export type VisitorOverview = {
 
 export const visitorApi = {
   getOverview: (days: 7 | 30 | 90 = 30) =>
-    api.get<{ success: boolean; data: VisitorOverview }>('/visitors/overview', {
-      params: { days },
-    }),
+    apiFetch<{ success: boolean; data: VisitorOverview }>(
+      '/visitors/overview',
+      {
+        params: { days },
+      }
+    ),
 };
 
 export type ProductFormData = {
@@ -1089,41 +1167,50 @@ export type ProductFormData = {
 
 export const productApi = {
   create: (data: FormData) =>
-    api.post<{ success: boolean; product: any }>('/products', data),
+    apiFetch<{ success: boolean; product: any }>('/products', {
+      method: 'POST',
+      body: data,
+    }),
 
   getAll: (params?: Record<string, any>) =>
-    api.get<{ success: boolean; products: any[] }>('/products', { params }),
+    apiFetch<{ success: boolean; products: any[] }>('/products', { params }),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; product: any }>(`/products/${id}`),
+    apiFetch<{ success: boolean; product: any }>(`/products/${id}`),
 
   getBySlug: (slug: string) =>
-    api.get<{ success: boolean; product: any }>(`/products/slug/${slug}`),
+    apiFetch<{ success: boolean; product: any }>(`/products/slug/${slug}`),
 
   addRating: (id: string, data: { rating: number; comment?: string }) =>
-    api.post<{ success: boolean; product: any }>(
-      `/products/${id}/ratings`,
-      data
-    ),
+    apiFetch<{ success: boolean; product: any }>(`/products/${id}/ratings`, {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: FormData) =>
-    api.put<{ success: boolean; product: any }>(`/products/${id}`, data),
+    apiFetch<{ success: boolean; product: any }>(`/products/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/products/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/products/${id}`, {
+      method: 'DELETE',
+    }),
 
   getPcParts: (params?: Record<string, string>) =>
-    api.get<PcPartsResponse>('/products/pc-parts', { params }),
+    apiFetch<PcPartsResponse>('/products/pc-parts', { params }),
 
   generateSku: (data: { name?: string; category?: string }) =>
-    api.post<{ success: boolean; sku: string; suffix: string }>(
+    apiFetch<{ success: boolean; sku: string; suffix: string }>(
       '/products/generate-sku',
-      data
+      { method: 'POST', body: data }
     ),
 
   generateProductCode: () =>
-    api.post<{ success: boolean; productCode: string }>(
-      '/products/generate-code'
+    apiFetch<{ success: boolean; productCode: string }>(
+      '/products/generate-code',
+      { method: 'POST' }
     ),
 };
 
@@ -1179,7 +1266,7 @@ export type PcPartsResponse = {
 
 export const pcPartsApi = {
   list: (params?: Record<string, string>) =>
-    api.get<PcPartsResponse>('/products/pc-parts', { params }),
+    apiFetch<PcPartsResponse>('/products/pc-parts', { params }),
 };
 
 export type SavedComponent = {
@@ -1200,18 +1287,19 @@ export type SavedBuild = {
 
 export const pcBuilderApi = {
   getMyBuilds: () =>
-    api.get<{ success: boolean; builds: SavedBuild[] }>('/pc-builder/builds'),
+    apiFetch<{ success: boolean; builds: SavedBuild[] }>('/pc-builder/builds'),
   save: (data: {
     name?: string;
     components: Record<string, { product: string }>;
   }) =>
-    api.post<{ success: boolean; build: SavedBuild }>(
-      '/pc-builder/builds',
-      data
-    ),
+    apiFetch<{ success: boolean; build: SavedBuild }>('/pc-builder/builds', {
+      method: 'POST',
+      body: data,
+    }),
   remove: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(
-      `/pc-builder/builds/${id}`
+    apiFetch<{ success: boolean; message: string }>(
+      `/pc-builder/builds/${id}`,
+      { method: 'DELETE' }
     ),
 };
 
@@ -1253,16 +1341,21 @@ export const reviewApi = {
     status?: string;
     rating?: string;
     featured?: string;
-  }) => api.get<ReviewPaginatedResponse>('/reviews', { params }),
+  }) => apiFetch<ReviewPaginatedResponse>('/reviews', { params }),
 
   getStats: () =>
-    api.get<{ success: boolean; stats: ReviewStats }>('/reviews/stats'),
+    apiFetch<{ success: boolean; stats: ReviewStats }>('/reviews/stats'),
 
   update: (id: string, data: { status?: string; featured?: boolean }) =>
-    api.patch<{ success: boolean; review: Review }>(`/reviews/${id}`, data),
+    apiFetch<{ success: boolean; review: Review }>(`/reviews/${id}`, {
+      method: 'PATCH',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/reviews/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/reviews/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 export type Question = {
@@ -1303,33 +1396,38 @@ export const questionApi = {
     status?: string;
     featured?: string;
     productId?: string;
-  }) => api.get<QuestionPaginatedResponse>('/questions', { params }),
+  }) => apiFetch<QuestionPaginatedResponse>('/questions', { params }),
 
   getStats: () =>
-    api.get<{ success: boolean; stats: QuestionStats }>('/questions/stats'),
+    apiFetch<{ success: boolean; stats: QuestionStats }>('/questions/stats'),
 
   getByProduct: (productId: string) =>
-    api.get<{ success: boolean; count: number; questions: Question[] }>(
+    apiFetch<{ success: boolean; count: number; questions: Question[] }>(
       `/questions/product/${productId}`
     ),
 
   ask: (productId: string, question: string) =>
-    api.post<{ success: boolean; question: Question }>('/questions', {
-      productId,
-      question,
+    apiFetch<{ success: boolean; question: Question }>('/questions', {
+      method: 'POST',
+      body: {
+        productId,
+        question,
+      },
     }),
 
   update: (
     id: string,
     data: { answer?: string; status?: string; featured?: boolean }
   ) =>
-    api.patch<{ success: boolean; question: Question }>(
-      `/questions/${id}`,
-      data
-    ),
+    apiFetch<{ success: boolean; question: Question }>(`/questions/${id}`, {
+      method: 'PATCH',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/questions/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/questions/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 export type PromoCode = {
@@ -1390,34 +1488,45 @@ export const promoApi = {
     search?: string;
     status?: string;
     type?: string;
-  }) => api.get<PromoPaginatedResponse>('/promo', { params }),
+  }) => apiFetch<PromoPaginatedResponse>('/promo', { params }),
 
   getStats: () =>
-    api.get<{ success: boolean; stats: PromoStats }>('/promo/stats'),
+    apiFetch<{ success: boolean; stats: PromoStats }>('/promo/stats'),
 
   create: (data: PromoFormData) =>
-    api.post<{ success: boolean; promo: PromoCode }>('/promo', data),
+    apiFetch<{ success: boolean; promo: PromoCode }>('/promo', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: Partial<PromoFormData>) =>
-    api.put<{ success: boolean; promo: PromoCode }>(`/promo/${id}`, data),
+    apiFetch<{ success: boolean; promo: PromoCode }>(`/promo/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/promo/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/promo/${id}`, {
+      method: 'DELETE',
+    }),
 
   validate: (
     code: string,
     subtotal: number,
     items?: { product: string; quantity: number }[]
   ) =>
-    api.post<{
+    apiFetch<{
       success: boolean;
       promo: Partial<PromoCode>;
       discount: number;
       matchingSubtotal?: number;
     }>('/promo/validate', {
-      code,
-      subtotal,
-      items,
+      method: 'POST',
+      body: {
+        code,
+        subtotal,
+        items,
+      },
     }),
 };
 
@@ -1427,18 +1536,24 @@ export type MaintenanceStatus = {
   endAt: string | null;
   contactEmail: string;
   contactPhone: string;
+  /** False = browse-only mode: customers can see products but cannot buy. */
+  sellingEnabled: boolean;
+  /** Optional custom notice shown while buying is disabled. */
+  sellingMessage: string;
+  /** ISO timestamp of the last change (admin header only). */
+  updatedAt?: string | null;
 };
 
 export const maintenanceApi = {
   getStatus: () =>
-    api.get<{ success: boolean; maintenance: MaintenanceStatus }>(
+    apiFetch<{ success: boolean; maintenance: MaintenanceStatus }>(
       '/maintenance/status'
     ),
 
   update: (data: Partial<MaintenanceStatus>) =>
-    api.put<{ success: boolean; maintenance: MaintenanceStatus }>(
+    apiFetch<{ success: boolean; maintenance: MaintenanceStatus }>(
       '/maintenance',
-      data
+      { method: 'PUT', body: data }
     ),
 };
 
@@ -1476,24 +1591,27 @@ export type SmsLog = {
 
 export const smsApi = {
   getSettings: () =>
-    api.get<{ success: boolean; settings: SmsSettings }>('/sms/settings'),
+    apiFetch<{ success: boolean; settings: SmsSettings }>('/sms/settings'),
 
   updateSettings: (data: Partial<SmsSettings>) =>
-    api.put<{ success: boolean; settings: SmsSettings }>('/sms/settings', data),
+    apiFetch<{ success: boolean; settings: SmsSettings }>('/sms/settings', {
+      method: 'PUT',
+      body: data,
+    }),
 
-  getBalance: () => api.get<SmsBalance>('/sms/balance'),
+  getBalance: () => apiFetch<SmsBalance>('/sms/balance'),
 
   send: (data: { numbers: string; message: string; senderId?: string }) =>
-    api.post<{
+    apiFetch<{
       success: boolean;
       log: SmsLog;
       provider: Record<string, any>;
       providerMessage: string;
       numbers: string[];
-    }>('/sms/send', data),
+    }>('/sms/send', { method: 'POST', body: data }),
 
   getLogs: (params?: { page?: number; limit?: number }) =>
-    api.get<{
+    apiFetch<{
       success: boolean;
       logs: SmsLog[];
       total: number;
@@ -1515,7 +1633,7 @@ export type MetaCatalogStatus = {
 };
 
 export const metaApi = {
-  getStatus: () => api.get<MetaCatalogStatus>('/meta/status'),
+  getStatus: () => apiFetch<MetaCatalogStatus>('/meta/status'),
 };
 
 export type HealthService = {
@@ -1536,7 +1654,7 @@ export type HealthStatus = {
 };
 
 export const healthApi = {
-  getStatus: () => api.get<HealthStatus>('/health'),
+  getStatus: () => apiFetch<HealthStatus>('/health'),
 };
 
 // ---------------- Offers ----------------
@@ -1556,22 +1674,30 @@ export type Offer = {
 
 export const offerApi = {
   getAll: (params?: Record<string, any>) =>
-    api.get<{ success: boolean; offers: Offer[] }>('/offers', { params }),
+    apiFetch<{ success: boolean; offers: Offer[] }>('/offers', { params }),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; offer: Offer }>(`/offers/${id}`),
+    apiFetch<{ success: boolean; offer: Offer }>(`/offers/${id}`),
 
   getBySlug: (slug: string) =>
-    api.get<{ success: boolean; offer: Offer }>(`/offers/slug/${slug}`),
+    apiFetch<{ success: boolean; offer: Offer }>(`/offers/slug/${slug}`),
 
   create: (data: FormData) =>
-    api.post<{ success: boolean; offer: Offer }>('/offers', data),
+    apiFetch<{ success: boolean; offer: Offer }>('/offers', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: FormData) =>
-    api.put<{ success: boolean; offer: Offer }>(`/offers/${id}`, data),
+    apiFetch<{ success: boolean; offer: Offer }>(`/offers/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/offers/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/offers/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 export type HolidayConfig = {
@@ -1590,10 +1716,13 @@ export type HolidayConfig = {
 
 export const holidayApi = {
   getConfig: () =>
-    api.get<{ success: boolean; config: HolidayConfig }>('/holiday'),
+    apiFetch<{ success: boolean; config: HolidayConfig }>('/holiday'),
 
   updateConfig: (data: Partial<HolidayConfig>) =>
-    api.put<{ success: boolean; config: HolidayConfig }>('/holiday', data),
+    apiFetch<{ success: boolean; config: HolidayConfig }>('/holiday', {
+      method: 'PUT',
+      body: data,
+    }),
 };
 
 export type AdminNotificationCategory =
@@ -1619,7 +1748,7 @@ export const notificationApi = {
     read?: boolean;
     category?: string;
   }) =>
-    api.get<{
+    apiFetch<{
       success: boolean;
       notifications: AdminNotification[];
       total: number;
@@ -1629,17 +1758,20 @@ export const notificationApi = {
     }>('/notifications', { params }),
 
   unreadCount: () =>
-    api.get<{ success: boolean; unreadCount: number }>(
+    apiFetch<{ success: boolean; unreadCount: number }>(
       '/notifications/unread-count'
     ),
 
   markRead: (id: string) =>
-    api.patch<{ success: boolean; notification: AdminNotification }>(
-      `/notifications/${id}/read`
+    apiFetch<{ success: boolean; notification: AdminNotification }>(
+      `/notifications/${id}/read`,
+      { method: 'PATCH' }
     ),
 
   markAllRead: () =>
-    api.post<{ success: boolean; message: string }>('/notifications/read-all'),
+    apiFetch<{ success: boolean; message: string }>('/notifications/read-all', {
+      method: 'POST',
+    }),
 };
 
 // ─── Staff & Access Management ────────────────────────────────────────────────
@@ -1728,7 +1860,7 @@ export type UpdateStaffPayload = {
 };
 
 export const staffApi = {
-  getStats: () => api.get<StaffStatsResponse>('/staff/stats'),
+  getStats: () => apiFetch<StaffStatsResponse>('/staff/stats'),
 
   getAll: (params?: {
     page?: number;
@@ -1736,26 +1868,37 @@ export const staffApi = {
     search?: string;
     role?: string;
     status?: string;
-  }) => api.get<StaffListResponse>('/staff', { params }),
+  }) => apiFetch<StaffListResponse>('/staff', { params }),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; member: StaffMember; effectivePermissions: ModulePermission[] }>(
-      `/staff/${id}`
-    ),
+    apiFetch<{
+      success: boolean;
+      member: StaffMember;
+      effectivePermissions: ModulePermission[];
+    }>(`/staff/${id}`),
 
   create: (data: CreateStaffPayload) =>
-    api.post<{ success: boolean; member: StaffMember }>('/staff', data),
+    apiFetch<{ success: boolean; member: StaffMember }>('/staff', {
+      method: 'POST',
+      body: data,
+    }),
 
   update: (id: string, data: UpdateStaffPayload) =>
-    api.put<{ success: boolean; member: StaffMember }>(`/staff/${id}`, data),
+    apiFetch<{ success: boolean; member: StaffMember }>(`/staff/${id}`, {
+      method: 'PUT',
+      body: data,
+    }),
 
   toggleStatus: (id: string) =>
-    api.patch<{ success: boolean; active: boolean; message: string }>(
-      `/staff/${id}/status`
+    apiFetch<{ success: boolean; active: boolean; message: string }>(
+      `/staff/${id}/status`,
+      { method: 'PATCH' }
     ),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/staff/${id}`),
+    apiFetch<{ success: boolean; message: string }>(`/staff/${id}`, {
+      method: 'DELETE',
+    }),
 };
 
 // ─── Permission Groups ────────────────────────────────────────────────────────
@@ -1791,17 +1934,30 @@ export type UpdatePermissionGroupPayload = {
 
 export const permissionGroupApi = {
   getAll: () =>
-    api.get<{ success: boolean; groups: PermissionGroup[] }>('/permission-groups'),
+    apiFetch<{ success: boolean; groups: PermissionGroup[] }>(
+      '/permission-groups'
+    ),
 
   getById: (id: string) =>
-    api.get<{ success: boolean; group: PermissionGroup }>(`/permission-groups/${id}`),
+    apiFetch<{ success: boolean; group: PermissionGroup }>(
+      `/permission-groups/${id}`
+    ),
 
   create: (data: CreatePermissionGroupPayload) =>
-    api.post<{ success: boolean; group: PermissionGroup }>('/permission-groups', data),
+    apiFetch<{ success: boolean; group: PermissionGroup }>(
+      '/permission-groups',
+      { method: 'POST', body: data }
+    ),
 
   update: (id: string, data: UpdatePermissionGroupPayload) =>
-    api.put<{ success: boolean; group: PermissionGroup }>(`/permission-groups/${id}`, data),
+    apiFetch<{ success: boolean; group: PermissionGroup }>(
+      `/permission-groups/${id}`,
+      { method: 'PUT', body: data }
+    ),
 
   delete: (id: string) =>
-    api.delete<{ success: boolean; message: string }>(`/permission-groups/${id}`),
+    apiFetch<{ success: boolean; message: string }>(
+      `/permission-groups/${id}`,
+      { method: 'DELETE' }
+    ),
 };

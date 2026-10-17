@@ -29,7 +29,10 @@ export function getApiBase(): string {
  * - Accepts fully-qualified URLs, whose `/api` prefix is normalized.
  * - Query strings and hashes are preserved.
  */
-export function buildApiUrl(path: string, params?: Record<string, unknown>): string {
+export function buildApiUrl(
+  path: string,
+  params?: Record<string, unknown>
+): string {
   let u = (path || '').trim();
 
   // Fully-qualified URL: keep its path/query and normalize the /api prefix.

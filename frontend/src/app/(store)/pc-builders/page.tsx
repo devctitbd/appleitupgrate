@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { useAuth, useCart } from '@/store';
+import { useStoreStatus } from '@/components/store/StoreStatusProvider';
 import { pcBuilderApi } from '@/lib/api';
 import { partPrice } from '@/lib/utils';
 import {
@@ -59,6 +60,7 @@ export default function PcBuildersPage() {
   const { user, isAuthenticated } = useAuth();
   const { selected, removePart, clearAll } = usePcBuilder();
   const { addItem } = useCart();
+  const { buyingEnabled, sellingMessage } = useStoreStatus();
 
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const [buildName, setBuildName] = useState('');
@@ -99,6 +101,12 @@ export default function PcBuildersPage() {
   async function addToCart() {
     if (selectedCount === 0) {
       toast.error('Select at least one component');
+      return;
+    }
+    if (!buyingEnabled) {
+      toast.error(
+        sellingMessage?.trim() || 'Buying is temporarily disabled right now.'
+      );
       return;
     }
     for (const slot of [...CORE_SLOTS, ...PERIPHERAL_SLOTS]) {
@@ -185,128 +193,136 @@ export default function PcBuildersPage() {
       <div className="min-h-screen bg-gray-50/60 print:hidden">
         <div className="mx-auto max-w-7xl px-4 py-6">
           {/* ── Builder header / actions ── */}
-        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold">Build Your PC</h1>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              onClick={addToCart}
-              className="gap-2"
-              disabled={selectedCount === 0}
-            >
-              <ShoppingCart className="h-4 w-4" /> Add to cart ({selectedCount})
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                if (!isAuthenticated) {
-                  toast.error('Please log in to save builds');
-                  return;
-                }
-                setSaveDialogOpen(true);
-              }}
-              className="gap-2"
-              disabled={selectedCount === 0}
-            >
-              <Save className="h-4 w-4" /> Save PC
-            </Button>
-            {isAuthenticated && savedBuilds.length > 0 && (
-              <DropdownMenu>
-                <DropdownMenuTrigger className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-transparent px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
-                  My Builds
-                  <ChevronDown className="h-3.5 w-3.5" />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72">
-                  <DropdownMenuGroup>
-                    <DropdownMenuLabel>Saved builds</DropdownMenuLabel>
-                    <DropdownMenuSeparator />
-                    {savedBuilds.map((b) => (
-                      <div key={b._id}>
-                        <DropdownMenuItem onClick={() => loadBuild(b)}>
-                          <span className="flex-1 truncate">{b.name}</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          className="text-destructive focus:text-destructive"
-                          onClick={() => deleteBuild(b)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                          <span>Delete</span>
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                      </div>
-                    ))}
-                  </DropdownMenuGroup>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <h1 className="text-xl font-semibold">Build Your PC</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                onClick={addToCart}
+                className="gap-2"
+                disabled={selectedCount === 0 || !buyingEnabled}
+              >
+                <ShoppingCart className="h-4 w-4" />{' '}
+                {buyingEnabled
+                  ? `Add to cart (${selectedCount})`
+                  : 'Buying Disabled'}
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  if (!isAuthenticated) {
+                    toast.error('Please log in to save builds');
+                    return;
+                  }
+                  setSaveDialogOpen(true);
+                }}
+                className="gap-2"
+                disabled={selectedCount === 0}
+              >
+                <Save className="h-4 w-4" /> Save PC
+              </Button>
+              {isAuthenticated && savedBuilds.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-input bg-transparent px-4 text-sm font-medium transition-colors hover:bg-accent hover:text-accent-foreground">
+                    My Builds
+                    <ChevronDown className="h-3.5 w-3.5" />
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" className="w-72">
+                    <DropdownMenuGroup>
+                      <DropdownMenuLabel>Saved builds</DropdownMenuLabel>
+                      <DropdownMenuSeparator />
+                      {savedBuilds.map((b) => (
+                        <div key={b._id}>
+                          <DropdownMenuItem onClick={() => loadBuild(b)}>
+                            <span className="flex-1 truncate">{b.name}</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => deleteBuild(b)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            <span>Delete</span>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                        </div>
+                      ))}
+                    </DropdownMenuGroup>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => window.print()}
+                className="print:hidden"
+              >
+                <Printer className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+
+          {/* ── Summary bar ── */}
+          <div className="mb-6 flex flex-wrap items-center justify-center gap-6">
+            {selectedCount > 0 && (
+              <>
+                <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <span>
+                    Est. Wattage: <strong>{totals.wattage}W</strong>
+                  </span>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Total:{' '}
+                  <strong className="text-foreground">
+                    ৳{totals.price.toLocaleString()}
+                  </strong>
+                </div>
+              </>
             )}
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => window.print()}
-              className="print:hidden"
-            >
-              <Printer className="h-4 w-4" />
-            </Button>
+            {requiredMissing.length > 0 && selectedCount > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                Missing:{' '}
+                {requiredMissing
+                  .map((s) => SLOT_LABELS[s as SlotKey])
+                  .join(', ')}
+              </Badge>
+            )}
           </div>
+
+          {/* ── Core Components column ── */}
+          <Section title="Core Components" slots={CORE_SLOTS} />
+
+          {/* ── Peripherals column ── */}
+          <Section title="Peripherals & Others" slots={PERIPHERAL_SLOTS} />
         </div>
 
-        {/* ── Summary bar ── */}
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-6">
-          {selectedCount > 0 && (
-            <>
-              <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                <Zap className="h-4 w-4 text-amber-500" />
-                <span>
-                  Est. Wattage: <strong>{totals.wattage}W</strong>
-                </span>
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Total:{' '}
-                <strong className="text-foreground">
-                  ৳{totals.price.toLocaleString()}
-                </strong>
-              </div>
-            </>
-          )}
-          {requiredMissing.length > 0 && selectedCount > 0 && (
-            <Badge variant="destructive" className="text-xs">
-              Missing:{' '}
-              {requiredMissing.map((s) => SLOT_LABELS[s as SlotKey]).join(', ')}
-            </Badge>
-          )}
-        </div>
-
-        {/* ── Core Components column ── */}
-        <Section title="Core Components" slots={CORE_SLOTS} />
-
-        {/* ── Peripherals column ── */}
-        <Section title="Peripherals & Others" slots={PERIPHERAL_SLOTS} />
-      </div>
-
-      {/* ── Save dialog ── */}
-      <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Save your build</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3 py-2">
-            <Label>Build name (optional)</Label>
-            <Input
-              value={buildName}
-              onChange={(e) => setBuildName(e.target.value)}
-              placeholder="e.g. Gaming RTX 4070 Build"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setSaveDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={saveBuild} disabled={saving}>
-              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Save
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        {/* ── Save dialog ── */}
+        <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Save your build</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <Label>Build name (optional)</Label>
+              <Input
+                value={buildName}
+                onChange={(e) => setBuildName(e.target.value)}
+                placeholder="e.g. Gaming RTX 4070 Build"
+              />
+            </div>
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setSaveDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button onClick={saveBuild} disabled={saving}>
+                {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* ── Print-only layout ─────────────────────────────────────────── */}
@@ -375,7 +391,9 @@ function PrintLayout({
           <span className="text-base font-semibold">Apple IT Zone</span>
           <span className="text-xs">Phone: 16793</span>
           <span className="text-xs">Email: testemail@gmail.com</span>
-          <span className="text-xs">https://www.appleitzone.com/pc-builders</span>
+          <span className="text-xs">
+            https://www.appleitzone.com/pc-builders
+          </span>
         </div>
       </div>
 
@@ -400,12 +418,16 @@ function PrintLayout({
         <tbody>
           {rows.map((row) => (
             <tr key={row.slot}>
-              <td className="py-1.5 px-2 border border-gray-400">{row.label}</td>
+              <td className="py-1.5 px-2 border border-gray-400">
+                {row.label}
+              </td>
               <td className="py-1.5 px-2 border border-gray-400">
                 {row.name || ''}
               </td>
               <td className="py-1.5 px-2 text-right border border-gray-400">
-                {row.name && row.price > 0 ? row.price.toLocaleString() + '৳' : ''}
+                {row.name && row.price > 0
+                  ? row.price.toLocaleString() + '৳'
+                  : ''}
               </td>
               <td className="py-1.5 px-2 text-right border border-gray-400">
                 {row.name && row.regularPrice > 0

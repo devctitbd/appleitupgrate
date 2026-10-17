@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Search, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import api from '@/lib/http';
+import { apiFetch } from '@/lib/http';
 import type { RawProduct } from '@/lib/productMapper';
 
 interface SearchBarProps {
@@ -22,7 +22,10 @@ const thumbFallback = (name: string) =>
 
 function ResultThumb({ product }: { product: RawProduct }) {
   const [error, setError] = useState(false);
-  const src = error || !product.images?.[0] ? thumbFallback(product.name) : product.images[0];
+  const src =
+    error || !product.images?.[0]
+      ? thumbFallback(product.name)
+      : product.images[0];
   return (
     <Image
       src={src}
@@ -67,7 +70,10 @@ export function SearchBar({
 
   useEffect(() => {
     const handler = (e: MouseEvent | TouchEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(e.target as Node)
+      ) {
         close();
       }
     };
@@ -106,7 +112,7 @@ export function SearchBar({
     const myId = ++requestIdRef.current;
     debounceRef.current = setTimeout(async () => {
       try {
-        const { data } = await api.get<{ success: boolean; products: any[] }>(
+        const { data } = await apiFetch<{ success: boolean; products: any[] }>(
           '/products',
           { params: { search: q, limit: 8 } }
         );
@@ -150,7 +156,8 @@ export function SearchBar({
       if (results.length > 0) setActiveIndex((i) => (i + 1) % results.length);
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (results.length > 0) setActiveIndex((i) => (i - 1 + results.length) % results.length);
+      if (results.length > 0)
+        setActiveIndex((i) => (i - 1 + results.length) % results.length);
     } else if (e.key === 'Enter') {
       e.preventDefault();
       if (activeIndex >= 0 && results[activeIndex]) {
@@ -242,7 +249,9 @@ export function SearchBar({
                       onClick={() => goToProduct(product)}
                       onMouseEnter={() => setActiveIndex(index)}
                       className={`flex w-full items-center gap-3 px-3 py-2 text-left transition-colors ${
-                        index === activeIndex ? 'bg-purple-50' : 'hover:bg-slate-50'
+                        index === activeIndex
+                          ? 'bg-purple-50'
+                          : 'hover:bg-slate-50'
                       }`}
                     >
                       <ResultThumb product={product} />

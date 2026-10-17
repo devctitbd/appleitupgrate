@@ -1,53 +1,48 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { storeApi } from '@/lib/api';
+import { storeSettingsResource } from '@/lib/resources';
 import { formatMoney, getCurrencySymbol } from '@/utils/currency';
 
-// The store currency is configured once in Settings and rarely changes, but it
-// is needed by many components. Cache the request at module scope so it is
-// fetched at most once per browser session.
-let cachedCurrency: string | null = null;
-let inflight: Promise<string> | null = null;
-
-function loadCurrency(): Promise<string> {
-  if (cachedCurrency) return Promise.resolve(cachedCurrency);
-  if (!inflight) {
-    inflight = storeApi
-      .get()
-      .then(({ data }) => {
-        cachedCurrency = (data?.settings?.currency || 'BDT').toUpperCase();
-        return cachedCurrency;
-      })
-      .catch(() => {
-        // Allow a retry on the next mount; fall back to BDT meanwhile.
-        inflight = null;
-        return 'BDT';
-      });
-  }
-  return inflight;
-}
+const DEFAULT_CURRENCY = 'BDT';
 
 /** Invalidate the cached currency (call after changing it in Settings). */
 export function invalidateCurrency() {
-  cachedCurrency = null;
-  inflight = null;
+  storeSettingsResource.invalidate();
 }
 
 /**
  * Read the store's configured currency (Settings → Default Currency) and expose
  * a symbol plus a formatter so prices are never hardcoded.
+ *
+ * Backed by a shared resource, so many components use a single request.
  */
 export function useCurrency() {
-  const [currency, setCurrency] = useState<string>(cachedCurrency || 'BDT');
+  const [currency, setCurrency] = useState<string>(() => {
+    const cached = storeSettingsResource.peek();
+    return cached?.currency ? cached.currency.toUpperCase() : DEFAULT_CURRENCY;
+  });
 
   useEffect(() => {
     let active = true;
-    loadCurrency().then((code) => {
-      if (active) setCurrency(code);
+
+    const apply = (value?: string) => {
+      if (active) setCurrency(value || DEFAULT_CURRENCY);
+    };
+
+    const unsubscribe = storeSettingsResource.subscribe(() => {
+      const cached = storeSettingsResource.peek();
+      apply(cached?.currency ? cached.currency.toUpperCase() : undefined);
     });
+
+    storeSettingsResource
+      .get()
+      .then((settings) => apply(settings?.currency?.toUpperCase()))
+      .catch(() => apply(undefined));
+
     return () => {
       active = false;
+      unsubscribe();
     };
   }, []);
 

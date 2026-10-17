@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useAuth, useCart } from '@/store';
 import Link from 'next/link';
-import api from '@/lib/http';
+import { apiFetch } from '@/lib/http';
 
 const registerSchema = z
   .object({
@@ -107,11 +107,14 @@ function RegisterPage() {
 
     setSubmitting(true);
     try {
-      const res = await api.post('/auth/register', {
-        name: `${parsed.data.firstName} ${parsed.data.lastName}`,
-        email: parsed.data.email,
-        password: parsed.data.password,
-        phone: parsed.data.telephone,
+      const res = await apiFetch('/auth/register', {
+        method: 'POST',
+        body: {
+          name: `${parsed.data.firstName} ${parsed.data.lastName}`,
+          email: parsed.data.email,
+          password: parsed.data.password,
+          phone: parsed.data.telephone,
+        },
       });
       const data = res.data;
 

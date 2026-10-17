@@ -1,69 +1,91 @@
 // src/lib/serverApi.ts
-// Server-only data fetching helpers (used by server components / metadata).
+// Server-only data fetching helpers for Server Components / metadata.
+// Uses the built-in Next.js fetch() with caching/revalidation.
 import { cache } from 'react';
 import { getApiBase } from './apiConfig';
 
 const API_BASE = getApiBase();
 
-export const fetchProductBySlug = cache(async (slug: string) => {
+// Public catalog data changes rarely; cache it with Next.js incremental
+// revalidation instead of disabling cache entirely.
+const REVALIDATE_SECONDS = 60;
+
+async function getJson<T = any>(path: string, revalidate = REVALIDATE_SECONDS) {
   try {
-    const res = await fetch(`${API_BASE}/products/slug/${encodeURIComponent(slug)}`, {
-      cache: 'no-store',
+    const res = await fetch(`${API_BASE}${path}`, {
+      next: { revalidate },
     });
     if (!res.ok) return null;
-    const data = await res.json();
-    return data.success ? data.product : null;
+    return (await res.json()) as T;
   } catch {
     return null;
   }
+}
+
+export const fetchProductBySlug = cache(async (slug: string) => {
+  const data = await getJson<{ success: boolean; product: any }>(
+    `/products/slug/${encodeURIComponent(slug)}`
+  );
+  return data?.success ? data.product : null;
 });
 
 export const fetchCategories = cache(async () => {
-  try {
-    const res = await fetch(`${API_BASE}/categories`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.categories || [];
-  } catch {
-    return [];
-  }
+  const data = await getJson<{ categories: any[] }>('/categories');
+  return data?.categories || [];
 });
 
 export const fetchAllProducts = cache(async () => {
-  try {
-    const res = await fetch(`${API_BASE}/products?limit=5000`, { cache: 'no-store' });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.products || [];
-  } catch {
-    return [];
-  }
+  const data = await getJson<{ products: any[] }>('/products?limit=5000');
+  return data?.products || [];
+});
+
+// Featured products for the home page.
+export const fetchFeaturedProducts = cache(async (limit = 12) => {
+  const data = await getJson<{ products: any[] }>(
+    `/products?limit=${encodeURIComponent(String(limit))}`
+  );
+  return data?.products || [];
 });
 
 // Banner setting + active count for the home page banner (single request).
 export const fetchPhysicalStoreBanner = cache(async () => {
-  try {
-    const res = await fetch(`${API_BASE}/physical-stores/setting`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data.success ? data.setting : null;
-  } catch {
-    return null;
-  }
+  const data = await getJson<{ success: boolean; setting: any }>(
+    '/physical-stores/setting'
+  );
+  return data?.success ? data.setting : null;
 });
 
 // Active physical stores for the /physical-stores page.
 export const fetchPhysicalStores = cache(async () => {
-  try {
-    const res = await fetch(`${API_BASE}/physical-stores?active=true`, {
-      cache: 'no-store',
-    });
-    if (!res.ok) return [];
-    const data = await res.json();
-    return data.stores || [];
-  } catch {
-    return [];
-  }
+  const data = await getJson<{ stores: any[] }>('/physical-stores?active=true');
+  return data?.stores || [];
+});
+
+// Active hero/ad sliders for the home page.
+export const fetchActiveSliders = cache(async () => {
+  const data = await getJson<{ sliders: any[] }>('/sliders?active=true');
+  return data?.sliders || [];
+});
+
+// Active marquee notifications + whether the marquee is enabled.
+export const fetchHomeSliderTexts = cache(async () => {
+  const data = await getJson<{ texts: any[] }>(
+    '/home-slider-texts?active=true'
+  );
+  return data?.texts || [];
+});
+
+export const fetchHomeSliderSetting = cache(async () => {
+  const data = await getJson<{ setting: { enabled?: boolean } }>(
+    '/home-slider-texts/setting'
+  );
+  return data?.setting ?? null;
+});
+
+// Free-form home page content block.
+export const fetchHomeContent = cache(async () => {
+  const data = await getJson<{
+    homeContent: { content?: string; enabled?: boolean };
+  }>('/home-content');
+  return data?.homeContent ?? null;
 });

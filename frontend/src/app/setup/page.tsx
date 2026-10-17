@@ -18,7 +18,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useAppStore } from '@/store';
-import api, { ApiError } from '@/lib/http';
+import { apiFetch, ApiError } from '@/lib/http';
 
 const setupSchema = z
   .object({
@@ -72,7 +72,7 @@ export default function SetupPage() {
   const checkStatus = useCallback(async () => {
     setStatus('checking');
     try {
-      const res = await api.get<{ success: boolean; setupRequired: boolean }>(
+      const res = await apiFetch<{ success: boolean; setupRequired: boolean }>(
         '/setup/status'
       );
       setStatus(res.data.setupRequired ? 'required' : 'done');
@@ -106,7 +106,10 @@ export default function SetupPage() {
     setSubmitting(true);
     setErrors({});
     try {
-      const res = await api.post('/setup', parsed.data);
+      const res = await apiFetch('/setup', {
+        method: 'POST',
+        body: parsed.data,
+      });
       const data = res.data;
 
       if (!data.success) {
@@ -137,9 +140,9 @@ export default function SetupPage() {
       // 409 can mean "already set up" (someone beat us to it) or
       // "email taken" — re-check and show the right screen.
       if (err instanceof ApiError && err.status === 409) {
-        const res = await api
-          .get<{ setupRequired: boolean }>('/setup/status')
-          .catch(() => null);
+        const res = await apiFetch<{ setupRequired: boolean }>(
+          '/setup/status'
+        ).catch(() => null);
         if (res && !res.data.setupRequired) {
           setStatus('done');
           toast.info(message);
@@ -304,15 +307,13 @@ export default function SetupPage() {
                         showPassword ? 'Hide password' : 'Show password'
                       }
                     >
-                      {showPassword ? (
-                        <EyeOff size={18} />
-                      ) : (
-                        <Eye size={18} />
-                      )}
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-xs text-destructive">{errors.password}</p>
+                    <p className="text-xs text-destructive">
+                      {errors.password}
+                    </p>
                   )}
                 </div>
 
@@ -338,11 +339,7 @@ export default function SetupPage() {
                   <p className="text-sm text-destructive">{errors.form}</p>
                 )}
 
-                <Button
-                  type="submit"
-                  className="w-full"
-                  disabled={submitting}
-                >
+                <Button type="submit" className="w-full" disabled={submitting}>
                   {submitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

@@ -1,6 +1,6 @@
+import { fetchPhysicalStoreBanner } from '@/lib/serverApi';
 import { MapPin, Search } from 'lucide-react';
 import Link from 'next/link';
-import { fetchPhysicalStoreBanner } from '@/lib/serverApi';
 
 /**
  * Home page physical-stores banner (server rendered — no client JS).
@@ -34,10 +34,10 @@ const PhysicalStores = async () => {
         <div className="flex items-center gap-2">
           <MapPin className="text-white" size={50} aria-hidden="true" />
           <div>
-            <h2 className="text-3xl font-bold text-white lg:text-4xl">{heading}</h2>
-            {banner.subtitle && (
-              <p className="text-white">{banner.subtitle}</p>
-            )}
+            <h2 className="text-3xl font-bold text-white lg:text-4xl">
+              {heading}
+            </h2>
+            {banner.subtitle && <p className="text-white">{banner.subtitle}</p>}
           </div>
         </div>
 

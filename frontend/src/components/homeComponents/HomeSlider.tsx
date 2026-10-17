@@ -1,146 +1,29 @@
 'use client';
 
-import { sliderApi, type Slider } from '@/lib/api';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import type { StaticImageData } from 'next/image';
 import Image from 'next/image';
 import Link from 'next/link';
 import React, { useCallback, useEffect, useState } from 'react';
+import {
+  defaultSliderData,
+  type AdBoxData,
+  type HomeSliderData,
+  type SlideData,
+} from './homeSliderShared';
 
-// Backend-ready data interfaces
-export interface SlideData {
-  id: string;
-  image: string | StaticImageData;
-  title: string;
-  description?: string;
-  link?: string;
-}
-
-export interface AdBoxData {
-  id: string;
-  image: string | StaticImageData;
-  title: string;
-  description?: string;
-  link?: string;
-  position: 'top' | 'bottom';
-}
-
-export interface HomeSliderData {
-  slides: SlideData[];
-  adBoxes: AdBoxData[];
-}
-
-// Default placeholder data (shown only while loading or on error)
-const defaultData: HomeSliderData = {
-  slides: [
-    {
-      id: '1',
-      image: '/1.webp',
-      title: '',
-      description: '',
-      link: '#',
-    },
-    {
-      id: '2',
-      image: '/2.webp',
-      title: '',
-      description: '',
-      link: '#',
-    },
-    {
-      id: '3',
-      image: '/3.webp',
-      title: '',
-      description: '',
-      link: '#',
-    },
-  ],
-  adBoxes: [
-    {
-      id: 'ad1',
-      image: '/ad1.webp',
-      title: '',
-      description: '',
-      link: '#',
-      position: 'top',
-    },
-    {
-      id: 'ad2',
-      image: '/ad2.webp',
-      title: '',
-      description: '',
-      link: '#',
-      position: 'bottom',
-    },
-  ],
-};
+// Re-export the shared types for backwards compatibility.
+export type { AdBoxData, HomeSliderData, SlideData };
 
 interface HomeSliderProps {
   data?: HomeSliderData;
 }
 
-const mapSliders = (sliders: Slider[]): HomeSliderData => {
-  const slides = sliders
-    .filter((s) => s.type === 'hero')
-    .map((s) => ({
-      id: s._id,
-      image: s.image,
-      title: s.title,
-      description: s.description || undefined,
-      link: s.link || undefined,
-    }));
-
-  const tops = sliders
-    .filter((s) => s.type === 'ad_top')
-    .map((s) => ({
-      id: s._id,
-      image: s.image,
-      title: s.title,
-      description: s.description || undefined,
-      link: s.link || undefined,
-      position: 'top' as const,
-    }));
-
-  const bottoms = sliders
-    .filter((s) => s.type === 'ad_bottom')
-    .map((s) => ({
-      id: s._id,
-      image: s.image,
-      title: s.title,
-      description: s.description || undefined,
-      link: s.link || undefined,
-      position: 'bottom' as const,
-    }));
-
-  return { slides, adBoxes: [...tops, ...bottoms] };
-};
-
 const HomeSlider: React.FC<HomeSliderProps> = ({ data }) => {
-  const [fetchedData, setFetchedData] = useState<HomeSliderData | null>(null);
-  const [loading, setLoading] = useState(!data);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  const sliderData = data || fetchedData || defaultData;
+  const sliderData = data ?? defaultSliderData;
   const slideCount = sliderData.slides.length;
-
-  // Fetch live slides from the backend unless a `data` prop was provided
-  useEffect(() => {
-    if (data) return;
-    let mounted = true;
-    sliderApi
-      .getAll({ active: true })
-      .then(({ data: res }) => {
-        if (mounted) setFetchedData(mapSliders(res.sliders || []));
-      })
-      .catch(() => {})
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
-    return () => {
-      mounted = false;
-    };
-  }, [data]);
 
   const nextSlide = useCallback(() => {
     setCurrentIndex((prev) => (slideCount > 0 ? (prev + 1) % slideCount : 0));
@@ -177,25 +60,6 @@ const HomeSlider: React.FC<HomeSliderProps> = ({ data }) => {
       opacity: 0,
     },
   };
-
-  // Loading skeleton
-  if (loading) {
-    return (
-      <div className="w-full">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:h-[clamp(360px,35vw,500px)] lg:grid-cols-10">
-            <div className="aspect-video lg:col-span-7 lg:aspect-auto lg:h-full">
-              <div className="relative h-full overflow-hidden rounded-xl bg-gray-200 animate-pulse" />
-            </div>
-            <div className="flex h-auto flex-row gap-4 lg:col-span-3 lg:h-full lg:flex-col lg:gap-6">
-              <div className="aspect-4/3 min-w-0 flex-1 rounded-xl bg-gray-200 animate-pulse lg:aspect-auto" />
-              <div className="aspect-4/3 min-w-0 flex-1 rounded-xl bg-gray-200 animate-pulse lg:aspect-auto" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   // Empty state (no active slides)
   if (slideCount === 0) {

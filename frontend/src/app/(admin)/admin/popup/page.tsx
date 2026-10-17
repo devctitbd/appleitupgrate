@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { SiteHeader } from '@/components/site-header';
 import { popupOfferApi } from '@/lib/api';
+import { popupOfferResource } from '@/lib/resources';
 
 export default function PopupOfferPage() {
   const [image, setImage] = useState('');
@@ -53,6 +54,8 @@ export default function PopupOfferPage() {
 
       const response = await popupOfferApi.update(data);
       if (response.data.success) {
+        // Keep the shared storefront cache in sync with the new offer.
+        popupOfferResource.set(response.data.popupOffer);
         setImage(response.data.popupOffer.image);
         setEnabled(response.data.popupOffer.enabled);
         setDelaySeconds(response.data.popupOffer.delaySeconds);

@@ -7,6 +7,10 @@ const maintenanceSettingSchema = new mongoose.Schema(
     endAt: { type: Date, default: null },
     contactEmail: { type: String, default: '' },
     contactPhone: { type: String, default: '' },
+    // Browse-only mode: when false, customers can view products but cannot
+    // add to cart, place orders, or start a payment.
+    sellingEnabled: { type: Boolean, default: true },
+    sellingMessage: { type: String, default: '' },
   },
   { timestamps: true }
 );

@@ -2,53 +2,50 @@
 
 import { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
-import { popupOfferApi } from '@/lib/api';
+import { useResource } from '@/hooks/useResource';
+import { popupOfferResource } from '@/lib/resources';
 import { Button } from '@/components/ui/button';
 
 export default function PopupOfferDialog() {
   const [image, setImage] = useState('');
   const [open, setOpen] = useState(false);
+  const { data: popupOffer } = useResource(popupOfferResource);
 
   useEffect(() => {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let cancelled = false;
 
-    popupOfferApi
-      .get()
-      .then(({ data }) => {
-        if (cancelled || !data.success) return;
-        const popupOffer = data.popupOffer;
-        const today = new Date();
-        const dateKey = [
-          today.getFullYear(),
-          String(today.getMonth() + 1).padStart(2, '0'),
-          String(today.getDate()).padStart(2, '0'),
-        ].join('-');
-        const countKey = `popup-offer-count-${dateKey}`;
-        const shownCount = Number(localStorage.getItem(countKey) || '0');
+    if (!popupOffer) return;
 
-        if (
-          !popupOffer.enabled ||
-          !popupOffer.image ||
-          shownCount >= popupOffer.maxShowsPerDay
-        ) {
-          return;
-        }
+    const today = new Date();
+    const dateKey = [
+      today.getFullYear(),
+      String(today.getMonth() + 1).padStart(2, '0'),
+      String(today.getDate()).padStart(2, '0'),
+    ].join('-');
+    const countKey = `popup-offer-count-${dateKey}`;
+    const shownCount = Number(localStorage.getItem(countKey) || '0');
 
-        timer = setTimeout(() => {
-          if (cancelled) return;
-          localStorage.setItem(countKey, String(shownCount + 1));
-          setImage(popupOffer.image);
-          setOpen(true);
-        }, popupOffer.delaySeconds * 1000);
-      })
-      .catch(() => undefined);
+    if (
+      !popupOffer.enabled ||
+      !popupOffer.image ||
+      shownCount >= popupOffer.maxShowsPerDay
+    ) {
+      return;
+    }
+
+    timer = setTimeout(() => {
+      if (cancelled) return;
+      localStorage.setItem(countKey, String(shownCount + 1));
+      setImage(popupOffer.image);
+      setOpen(true);
+    }, popupOffer.delaySeconds * 1000);
 
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, []);
+  }, [popupOffer]);
 
   function dismiss() {
     setOpen(false);

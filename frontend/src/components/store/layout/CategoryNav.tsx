@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -14,7 +14,8 @@ import {
   MenubarTrigger,
 } from '@/components/ui/menubar';
 
-import { categoryApi } from '@/lib/api';
+import { useResource } from '@/hooks/useResource';
+import { categoriesResource } from '@/lib/resources';
 
 type TreeCategory = {
   id: string;
@@ -62,19 +63,12 @@ function buildTree(
 
 export const CategoryNav = () => {
   const router = useRouter();
-  const [categories, setCategories] = useState<TreeCategory[]>([]);
+  const { data: categoryData } = useResource(categoriesResource);
+  const categories = useMemo(
+    () => buildTree(categoryData || []),
+    [categoryData]
+  );
   const [scrolled, setScrolled] = useState(false);
-
-  useEffect(() => {
-    categoryApi
-      .getAll()
-      .then(({ data }) => {
-        if (data.success) {
-          setCategories(buildTree(data.categories));
-        }
-      })
-      .catch(() => {});
-  }, []);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);

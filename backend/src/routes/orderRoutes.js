@@ -11,11 +11,12 @@ import {
   adminCreateOrder, // admin only
 } from '../controllers/orderController.js';
 import { protect, adminOnly } from '../middleware/auth.js';
+import { requireSelling } from '../middleware/requireSelling.js';
 
 const router = express.Router();
 
 // ---- Protected routes (authenticated users) ----
-router.post('/', protect, createOrder); // place an order
+router.post('/', protect, requireSelling, createOrder); // place an order
 router.get('/my-orders', protect, getMyOrders); // get logged-in user's orders
 router.get('/stats', protect, adminOnly, getOrderStats); // order statistics
 

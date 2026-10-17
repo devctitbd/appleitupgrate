@@ -1,13 +1,12 @@
 // src/store/slices/cart.slice.ts
 import { StateCreator } from 'zustand';
 import { CartItem } from '../types';
-import api from '@/lib/http';
+import { apiFetch } from '@/lib/http';
 
 const isBrowser = () => typeof window !== 'undefined';
 
 // Matches the API client auth behavior: a stored token = logged-in (server will accept the request)
-const isAuthed = () =>
-  isBrowser() && !!localStorage.getItem('mobile_token');
+const isAuthed = () => isBrowser() && !!localStorage.getItem('mobile_token');
 
 // Map backend cart items -> local CartItem shape
 const mapServerItems = (items: any[]): CartItem[] =>
@@ -66,7 +65,7 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     if (!isAuthed()) return;
     set({ cartLoading: true, error: null });
     try {
-      const response = await api.get('/cart');
+      const response = await apiFetch('/cart');
       if (response.data.success) {
         const items = mapServerItems(
           response.data.cart?.items ?? response.data.items ?? []
@@ -109,13 +108,16 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     if (!isAuthed()) return;
 
     try {
-      const response = await api.post('/cart', {
-        productId: product.productId,
-        name: product.name,
-        price: product.price,
-        promoDiscount: product.promoDiscount || 0,
-        quantity: product.quantity || 1,
-        image: product.image || '',
+      const response = await apiFetch('/cart', {
+        method: 'POST',
+        body: {
+          productId: product.productId,
+          name: product.name,
+          price: product.price,
+          promoDiscount: product.promoDiscount || 0,
+          quantity: product.quantity || 1,
+          image: product.image || '',
+        },
       });
       if (response.data.success && response.data.cart) {
         const serverItems = mapServerItems(response.data.cart.items);
@@ -135,7 +137,9 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     if (!isAuthed()) return;
 
     try {
-      const response = await api.delete(`/cart/${productId}`);
+      const response = await apiFetch(`/cart/${productId}`, {
+        method: 'DELETE',
+      });
       if (response.data.success && response.data.cart) {
         const serverItems = mapServerItems(response.data.cart.items);
         const totals = get().recalculateTotals(serverItems);
@@ -160,7 +164,10 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     if (!isAuthed()) return;
 
     try {
-      const response = await api.put('/cart', { productId, quantity });
+      const response = await apiFetch('/cart', {
+        method: 'PUT',
+        body: { productId, quantity },
+      });
       if (response.data.success && response.data.cart) {
         const serverItems = mapServerItems(response.data.cart.items);
         const totals = get().recalculateTotals(serverItems);
@@ -177,7 +184,7 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
     if (!isAuthed()) return;
 
     try {
-      await api.delete('/cart/clear');
+      await apiFetch('/cart/clear', { method: 'DELETE' });
     } catch (error) {
       console.error('Failed to clear cart on server:', error);
     }
@@ -195,13 +202,16 @@ export const createCartSlice: StateCreator<CartSlice> = (set, get) => ({
 
     try {
       for (const item of items) {
-        await api.post('/cart', {
-          productId: item.productId,
-          name: item.name,
-          price: item.price,
-          promoDiscount: item.promoDiscount || 0,
-          quantity: item.quantity,
-          image: item.image || '',
+        await apiFetch('/cart', {
+          method: 'POST',
+          body: {
+            productId: item.productId,
+            name: item.name,
+            price: item.price,
+            promoDiscount: item.promoDiscount || 0,
+            quantity: item.quantity,
+            image: item.image || '',
+          },
         });
       }
       await get().fetchCart();

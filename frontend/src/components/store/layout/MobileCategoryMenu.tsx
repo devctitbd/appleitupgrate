@@ -1,5 +1,5 @@
 'use client';
-import React, { useEffect, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { ChevronDownIcon, ChevronRightIcon, MenuIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,7 +10,8 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { categoryApi } from '@/lib/api';
+import { useResource } from '@/hooks/useResource';
+import { categoriesResource } from '@/lib/resources';
 
 type TreeCategory = {
   id: string;
@@ -62,18 +63,11 @@ export const MobileCategoryMenu = () => {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
     new Set()
   );
-  const [categories, setCategories] = useState<TreeCategory[]>([]);
-
-  useEffect(() => {
-    categoryApi
-      .getAll()
-      .then(({ data }) => {
-        if (data.success) {
-          setCategories(buildTree(data.categories));
-        }
-      })
-      .catch(() => {});
-  }, []);
+  const { data: categoryData } = useResource(categoriesResource);
+  const categories = useMemo(
+    () => buildTree(categoryData || []),
+    [categoryData]
+  );
 
   const toggleCategory = (categoryId: string) => {
     setExpandedCategories((prev) => {

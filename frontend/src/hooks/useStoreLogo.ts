@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { storeApi } from '@/lib/api';
+import { storePublicResource } from '@/lib/resources';
+import type { StoreSettings } from '@/lib/api';
 
 export type StoreLogo = {
   logoType: 'text' | 'image';
@@ -21,16 +22,9 @@ const DEFAULT_LOGO: StoreLogo = {
   storeName: '',
 };
 
-// Both the storefront header and the admin sidebar need the store logo, and it
-// rarely changes. Cache it at module scope so it is fetched at most once per
-// browser session; a "store-logo-updated" event (fired after saving Settings)
-// forces a fresh read.
-let cache: StoreLogo | null = null;
-let inflight: Promise<StoreLogo> | null = null;
-
 export const STORE_LOGO_EVENT = 'store-logo-updated';
 
-function normalize(settings: any): StoreLogo {
+function normalize(settings?: StoreSettings): StoreLogo {
   return {
     logoType: settings?.logoType === 'image' ? 'image' : 'text',
     logoUrl: settings?.logoUrl || '',
@@ -41,48 +35,48 @@ function normalize(settings: any): StoreLogo {
   };
 }
 
-function load(): Promise<StoreLogo> {
-  if (cache) return Promise.resolve(cache);
-  if (!inflight) {
-    inflight = storeApi
-      .getPublic()
-      .then(({ data }) => {
-        cache = normalize(data?.settings);
-        return cache;
-      })
-      .catch(() => {
-        inflight = null;
-        return DEFAULT_LOGO;
-      });
-  }
-  return inflight;
-}
-
-/** Drop the cached logo and refetch on the next subscribe. */
+/** Drop the cached store info and refetch on the next read. */
 export function invalidateStoreLogo() {
-  cache = null;
-  inflight = null;
+  storePublicResource.invalidate();
 }
 
 export function useStoreLogo() {
-  const [logo, setLogo] = useState<StoreLogo>(cache || DEFAULT_LOGO);
+  const cached = storePublicResource.peek();
+  const [logo, setLogo] = useState<StoreLogo>(
+    cached ? normalize(cached) : DEFAULT_LOGO
+  );
 
   useEffect(() => {
     let active = true;
 
-    const apply = (cfg: StoreLogo) => {
-      if (active) setLogo(cfg);
+    const apply = (settings?: StoreSettings) => {
+      if (active) setLogo(normalize(settings));
     };
 
+    // Re-render whenever the shared store-public cache changes.
+    const unsubscribe = storePublicResource.subscribe(() => {
+      apply(storePublicResource.peek());
+    });
+
+    storePublicResource
+      .get()
+      .then(apply)
+      .catch(() => {
+        if (active) setLogo(DEFAULT_LOGO);
+      });
+
+    // Settings saves dispatch this event to force a fresh read.
     const reload = () => {
-      invalidateStoreLogo();
-      load().then(apply);
+      storePublicResource
+        .get({ force: true })
+        .then(apply)
+        .catch(() => {});
     };
-
-    load().then(apply);
     window.addEventListener(STORE_LOGO_EVENT, reload);
+
     return () => {
       active = false;
+      unsubscribe();
       window.removeEventListener(STORE_LOGO_EVENT, reload);
     };
   }, []);

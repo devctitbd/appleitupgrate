@@ -1,13 +1,13 @@
+import GoogleAnalytics from '@/components/GoogleAnalytics';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
+import { buildApiUrl } from '@/lib/apiConfig';
 import { cn } from '@/lib/utils';
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import { ClientLayout } from './ClientLayout';
 import './globals.css';
 import { Providers } from './providers';
-import GoogleAnalytics from '@/components/GoogleAnalytics';
-import { buildApiUrl } from '@/lib/apiConfig';
 
 declare global {
   interface Window {
@@ -15,7 +15,7 @@ declare global {
   }
 }
 
-const appTitle = 'Apple IT Zone';
+const appTitle = 'Apple Repair Services - Affordable & Reliable';
 const appMainDescription =
   'Experience top-notch Apple repair services at unbeatable prices - online and in-store. From iPhones to Macs, we offer a wide range of services for all your Apple needs.';
 

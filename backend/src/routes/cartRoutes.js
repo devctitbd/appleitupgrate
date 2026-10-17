@@ -7,13 +7,14 @@ import {
   clearCart,
 } from '../controllers/cartController.js';
 import { protect } from '../middleware/auth.js';
+import { requireSelling } from '../middleware/requireSelling.js';
 
 const router = express.Router();
 
 router.use(protect);
 
 router.get('/', getCart);
-router.post('/', addToCart);
+router.post('/', requireSelling, addToCart);
 router.put('/', updateCartItem);
 router.delete('/clear', clearCart);
 router.delete('/:productId', removeFromCart);

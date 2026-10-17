@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import api from '@/lib/http';
+import { apiFetch } from '@/lib/http';
 
 const resetSchema = z
   .object({
@@ -80,10 +80,13 @@ export default function ResetPasswordPage() {
 
     setSubmitting(true);
     try {
-      const res = await api.post('/auth/reset-password', {
-        phone: parsed.data.phone,
-        otp: parsed.data.otp,
-        newPassword: parsed.data.newPassword,
+      const res = await apiFetch('/auth/reset-password', {
+        method: 'POST',
+        body: {
+          phone: parsed.data.phone,
+          otp: parsed.data.otp,
+          newPassword: parsed.data.newPassword,
+        },
       });
       const data = res.data;
       if (!res.data.success) {
@@ -105,8 +108,11 @@ export default function ResetPasswordPage() {
     }
     setResending(true);
     try {
-      const res = await api.post('/auth/forgot-password', {
-        phone: values.phone,
+      const res = await apiFetch('/auth/forgot-password', {
+        method: 'POST',
+        body: {
+          phone: values.phone,
+        },
       });
       const data = res.data;
       if (!res.data.success) {

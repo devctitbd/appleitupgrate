@@ -1,9 +1,9 @@
 // src/app/ClientLayout.tsx
 'use client';
 
-import { ReactNode, useEffect } from 'react';
-import { usePathname } from 'next/navigation';
 import { useAuth } from '@/store';
+import { usePathname } from 'next/navigation';
+import { ReactNode, useEffect } from 'react';
 
 export function ClientLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -16,5 +16,9 @@ export function ClientLayout({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  return <div key={pathname} className="min-h-screen">{children}</div>;
+  return (
+    <div key={pathname} className="min-h-screen">
+      {children}
+    </div>
+  );
 }
