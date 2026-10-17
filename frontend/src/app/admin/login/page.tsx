@@ -22,7 +22,7 @@ import { TwoFactorStep } from '@/components/TwoFactorStep';
 import type { LoginResponse } from '@/lib/api';
 import { apiFetch } from '@/lib/http';
 
-const ADMIN_ROLES = ['super_admin', 'admin'];
+const ADMIN_ROLES = ['super_admin', 'admin', 'manager'];
 
 const adminLoginSchema = z.object({
   email: z
@@ -98,6 +98,7 @@ export default function AdminLoginPage() {
         body: {
           identifier: parsed.data.email,
           password: parsed.data.password,
+          portal: 'admin',
         },
       });
       const data = res.data;
@@ -124,7 +125,7 @@ export default function AdminLoginPage() {
         await apiFetch('/auth/logout', { method: 'POST' }).catch(() => {});
         setErrors({
           email:
-            'This is the admin login. Only admin accounts can sign in here.',
+            'This is the staff login. Only staff accounts can sign in here.',
         });
         return;
       }

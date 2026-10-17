@@ -187,11 +187,25 @@ export const login = async (req, res) => {
     const { identifier, password } = req.body;
     const email = req.body.email || identifier;
     const lookup = email.toLowerCase().trim();
+    const isAdminPortal = req.body.portal === 'admin';
 
-    // 1) Try a regular customer/admin User account
-    const user = await User.findOne({
-      $or: [{ email: lookup }, { phone: email.trim() }],
-    }).select('+password');
+    // Admin login resolves staff first so a customer account sharing the same
+    // email cannot shadow its separate TeamMember account.
+    let member = null;
+    let user;
+    if (isAdminPortal) {
+      member = await TeamMember.findOne({ email: lookup }).select('+password');
+      if (!member) {
+        user = await User.findOne({
+          email: lookup,
+          role: { $in: ['admin', 'super_admin', 'manager'] },
+        }).select('+password');
+      }
+    } else {
+      user = await User.findOne({
+        $or: [{ email: lookup }, { phone: email.trim() }],
+      }).select('+password');
+    }
 
     if (user) {
       // Brute-force guard: temporary lock after repeated failures
@@ -233,7 +247,9 @@ export const login = async (req, res) => {
     }
 
     // 2) Try a TeamMember (staff / team collection)
-    const member = await TeamMember.findOne({ email: lookup }).select('+password');
+    if (!member) {
+      member = await TeamMember.findOne({ email: lookup }).select('+password');
+    }
     if (!member) {
       return res.status(401).json({
         success: false,

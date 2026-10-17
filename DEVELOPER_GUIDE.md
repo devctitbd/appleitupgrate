@@ -279,11 +279,10 @@ server proxy reads the cookie. One login authenticates both surfaces.
   `/admin/payments`, `/admin/sms`, `/admin/promo`, `/admin/maintenance`;
   `admin` (admin **or** super_admin) → `/admin/settings`; everything else defaults to `any`
   (but still gated by the layout's `ADMIN_ROLES`).
-- `src/app/(admin)/layout.tsx` gates: no user → `/admin/login`; not in
-  `ADMIN_ROLES = ['admin','super_admin']` → `/`; maintenance on & not super_admin →
-  `/maintenance`; then per-route `canAccessRoute()` → `<AccessDenied>` if insufficient.
-- ⚠️ **`manager` is locked out of the admin panel** by `ADMIN_ROLES` — the
-  rank-1 manager in `adminPermissions.ts` never passes the layout gate.
+- `src/app/(admin)/AdminLayoutClient.tsx` gates: no user → `/admin/login`; not in
+  `ADMIN_ROLES = ['admin','super_admin','manager']` → `/`; then per-route
+  `canAccessRoute()` → `<AccessDenied>` if insufficient. Staff can access the
+  admin panel during maintenance; the storefront remains gated separately.
 
 ### 3.6 SEO (products)
 

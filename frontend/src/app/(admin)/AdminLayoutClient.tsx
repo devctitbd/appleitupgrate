@@ -4,7 +4,6 @@ import { AccessDenied } from '@/components/AccessDenied';
 import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useMaintenance } from '@/hooks/use-maintenance';
 import {
   ADMIN_ROUTE_DENIED_MESSAGE,
   canAccessRoute,
@@ -60,7 +59,6 @@ export default function AdminLayoutClient({
   const { user, isLoading, fetchUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const { enabled } = useMaintenance();
 
   useLayoutEffect(() => {
     document.title = `Admin | ${brandName}`;
@@ -76,10 +74,8 @@ export default function AdminLayoutClient({
       router.replace('/admin/login');
     } else if (!ADMIN_ROLES.includes(user.role)) {
       router.replace('/');
-    } else if (enabled && user.role !== 'super_admin') {
-      router.replace('/maintenance');
     }
-  }, [isLoading, user, router, enabled]);
+  }, [isLoading, user, router]);
 
   if (isLoading || !user || !ADMIN_ROLES.includes(user.role)) {
     return <AdminSkeleton />;
