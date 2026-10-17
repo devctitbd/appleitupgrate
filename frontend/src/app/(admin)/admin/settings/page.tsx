@@ -320,7 +320,6 @@ export default function SettingsPage() {
           timezone: data.settings.timezone || 'gmt+6',
           address: data.settings.address || '',
         });
-        document.title = data.settings.storeName || 'Apple IT Zone';
         setLastUpdated(data.settings.updatedAt || null);
         setIsDirty(false);
       }
@@ -387,7 +386,6 @@ export default function SettingsPage() {
       // Re-read the logo for the admin sidebar / storefront header.
       invalidateStoreLogo();
       window.dispatchEvent(new Event(STORE_LOGO_EVENT));
-      document.title = profileForm.storeName || 'Apple IT Zone';
       setLastUpdated(data?.settings?.updatedAt || new Date().toISOString());
       toast.success('Settings saved');
       setIsDirty(false);

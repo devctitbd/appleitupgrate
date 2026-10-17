@@ -14,9 +14,9 @@ import {
   SidebarHeader,
   SidebarRail,
 } from '@/components/ui/sidebar';
+import { useStoreLogo } from '@/hooks/useStoreLogo';
 import { notificationApi } from '@/lib/api';
 import { getSocket } from '@/lib/socket';
-import { useStoreLogo } from '@/hooks/useStoreLogo';
 import { useAuth } from '@/store';
 import {
   BellCheck,
@@ -50,17 +50,22 @@ const data = {
           title: 'Slider',
           url: '/admin/slider',
         },
-        {
-          title: 'Home Text',
-          url: '/admin/hometext',
-        },
+
         {
           title: 'Home Slide Text',
           url: '/admin/homeslidertext',
         },
         {
+          title: 'Service Finder',
+          url: '/admin/service-finder',
+        },
+        {
           title: 'Physical Stores',
           url: '/admin/physical-stores',
+        },
+        {
+          title: 'Home Text',
+          url: '/admin/hometext',
         },
       ],
     },
@@ -160,7 +165,7 @@ const data = {
     },
     {
       title: 'Users',
-      url: '/admin/customers',
+      url: '#',
       icon: <UsersRound />,
       items: [
         {

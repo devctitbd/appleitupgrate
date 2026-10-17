@@ -1,106 +1,47 @@
-'use client';
+import type { Metadata } from 'next';
+import { cache } from 'react';
+import { buildApiUrl } from '@/lib/apiConfig';
+import AdminLayoutClient from './AdminLayoutClient';
 
-import { AccessDenied } from '@/components/AccessDenied';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
-import { Skeleton } from '@/components/ui/skeleton';
-import { useMaintenance } from '@/hooks/use-maintenance';
-import {
-  ADMIN_ROUTE_DENIED_MESSAGE,
-  canAccessRoute,
-} from '@/lib/adminPermissions';
-import { useAuth } from '@/store';
-import { usePathname, useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+const FALLBACK_BRAND_NAME = 'AppleItZone';
 
-const ADMIN_ROLES = ['admin', 'super_admin', 'manager'];
+const getBrandName = cache(async () => {
+  try {
+    const response = await fetch(buildApiUrl('/store/public'), {
+      cache: 'no-store',
+    });
+    if (!response.ok) {
+      console.error(
+        `Failed to load admin title brand name: ${response.status} ${response.statusText}`
+      );
+      return FALLBACK_BRAND_NAME;
+    }
 
-// Skeleton shell shown while the session is being restored, so the admin
-// area loads with a layout-accurate placeholder instead of a spinner.
-function AdminSkeleton() {
-  return (
-    <div className="flex min-h-svh w-full bg-background">
-      {/* Sidebar skeleton */}
-      <div className="hidden w-64 shrink-0 flex-col gap-4 border-r p-4 md:flex">
-        <div className="flex items-center gap-2">
-          <Skeleton className="h-8 w-8 rounded-lg" />
-          <Skeleton className="h-5 w-32" />
-        </div>
-        <div className="mt-2 space-y-2">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <Skeleton key={i} className="h-8 w-full rounded-lg" />
-          ))}
-        </div>
-      </div>
+    const data: { settings?: { storeName?: unknown } } = await response.json();
+    return typeof data.settings?.storeName === 'string' &&
+      data.settings.storeName.trim()
+      ? data.settings.storeName.trim()
+      : FALLBACK_BRAND_NAME;
+  } catch (error) {
+    console.error('Failed to load admin title brand name', error);
+    return FALLBACK_BRAND_NAME;
+  }
+});
 
-      {/* Main content skeleton */}
-      <div className="flex-1 space-y-6 p-4 md:p-8">
-        <Skeleton className="h-12 w-full rounded-xl" />
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-32 rounded-xl" />
-          ))}
-        </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
-          <Skeleton className="col-span-4 h-96 rounded-xl" />
-          <Skeleton className="col-span-3 h-96 rounded-xl" />
-        </div>
-      </div>
-    </div>
-  );
+export async function generateMetadata(): Promise<Metadata> {
+  const brandName = await getBrandName();
+  return {
+    title: `Admin | ${brandName}`,
+  };
 }
 
-const AdminLayout = ({ children }: { children: React.ReactNode }) => {
-  const { user, isLoading, fetchUser } = useAuth();
-  const router = useRouter();
-  const pathname = usePathname();
-  const { enabled } = useMaintenance();
-
-  useEffect(() => {
-    if (!user) fetchUser();
-  }, [user, fetchUser]);
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!user) {
-      router.replace('/admin/login');
-    } else if (!ADMIN_ROLES.includes(user.role)) {
-      router.replace('/');
-    } else if (enabled && user.role !== 'super_admin') {
-      router.replace('/maintenance');
-    }
-  }, [isLoading, user, router, enabled]);
-
-  if (isLoading || !user || !ADMIN_ROLES.includes(user.role)) {
-    return <AdminSkeleton />;
-  }
-
-  // Per-page role gate: block insufficient roles with a popup instead of the page.
-  if (!canAccessRoute(pathname, user.role)) {
-    return (
-      <AccessDenied
-        title="Access denied"
-        message={
-          ADMIN_ROUTE_DENIED_MESSAGE[pathname] ||
-          'You are not allowed to access this page.'
-        }
-      />
-    );
-  }
-
+export default async function AdminRouteLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const brandName = await getBrandName();
   return (
-    <SidebarProvider
-      style={
-        {
-          '--sidebar-width': 'calc(var(--spacing) * 72)',
-          '--header-height': 'calc(var(--spacing) * 12)',
-        } as React.CSSProperties
-      }
-    >
-      <AppSidebar variant="inset" />
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
+    <AdminLayoutClient brandName={brandName}>{children}</AdminLayoutClient>
   );
-};
-
-export default AdminLayout;
+}
