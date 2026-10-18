@@ -11,7 +11,8 @@ import { fetchActiveSliders } from '@/lib/serverApi';
 // Server Component — read data (sliders, categories, products, stores,
 // notifications, content) is fetched with the built-in Next.js fetch().
 const HomePage = async () => {
-  const sliders = mapSliders(await fetchActiveSliders());
+  const sliderResponse = await fetchActiveSliders();
+  const sliders = mapSliders(sliderResponse.sliders, sliderResponse.setting);
 
   return (
     <div className="mx-auto max-w-7xl">

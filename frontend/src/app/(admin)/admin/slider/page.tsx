@@ -1,39 +1,22 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import {
+  ArrowDown,
+  ArrowUp,
   ImagePlus,
+  Info,
+  Loader2,
+  Pencil,
+  Plus,
+  Trash2,
   Upload,
   X,
-  ArrowUp,
-  ArrowDown,
-  Pencil,
-  Trash2,
-  Plus,
-  Loader2,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
-import { Switch } from '@/components/ui/switch';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+import { SiteHeader } from '@/components/site-header';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +27,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Switch } from '@/components/ui/switch';
 import {
   Select,
   SelectContent,
@@ -51,38 +49,39 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { SiteHeader } from '@/components/site-header';
-import { sliderApi, type Slider, type SliderType } from '@/lib/api';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+import {
+  sliderApi,
+  type Slider,
+  type SliderForm,
+  type SliderSetting,
+  type SliderType,
+} from '@/lib/api';
 
-const TYPE_TABS: { value: SliderType; label: string; hint: string }[] = [
-  {
-    value: 'hero',
-    label: 'Hero Slides',
-    hint: 'Main carousel on the left (70% width)',
-  },
-  { value: 'ad_top', label: 'Top Ad', hint: 'Right-side top ad box' },
-  { value: 'ad_bottom', label: 'Bottom Ad', hint: 'Right-side bottom ad box' },
-];
+const IMAGE_DIMENSIONS: Record<SliderType, string> = {
+  hero: 'Recommended image dimensions: 982 × 500 px.',
+  ad_top: 'Recommended image dimensions: 315 × 252 px.',
+  ad_bottom: 'Recommended image dimensions: 315 × 252 px.',
+};
 
 const TYPE_LABEL: Record<SliderType, string> = {
-  hero: 'Hero',
-  ad_top: 'Top Ad',
-  ad_bottom: 'Bottom Ad',
+  hero: 'Main slide',
+  ad_top: 'Top advertisement',
+  ad_bottom: 'Bottom advertisement',
 };
 
-type SliderForm = {
-  title: string;
-  description: string;
-  image: string;
-  link: string;
-  type: SliderType;
-  active: boolean;
-  sortOrder: number;
+const DEFAULT_SETTING: SliderSetting = {
+  enabled: true,
+  autoSlide: true,
+  interval: 5,
 };
 
-const emptyForm: SliderForm = {
-  title: '',
-  description: '',
+const EMPTY_FORM: SliderForm = {
   image: '',
   link: '',
   type: 'hero',
@@ -90,479 +89,660 @@ const emptyForm: SliderForm = {
   sortOrder: 0,
 };
 
-const readFileToDataUrl = (file: File) =>
-  new Promise<string>((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = () => resolve(String(r.result));
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
+function validLink(link: string) {
+  const value = link.trim();
+  if (!value) return true;
+  if (value.startsWith('/') && !value.startsWith('//')) return true;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+function SliderRow({
+  slider,
+  index,
+  count,
+  onEdit,
+  onDelete,
+  onToggle,
+  onMove,
+}: {
+  slider: Slider;
+  index: number;
+  count: number;
+  onEdit: (slider: Slider) => void;
+  onDelete: (slider: Slider) => void;
+  onToggle: (slider: Slider) => void;
+  onMove?: (index: number, direction: -1 | 1) => void;
+}) {
+  return (
+    <Card>
+      <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
+        <div
+          className={`relative w-full shrink-0 overflow-hidden rounded-md border bg-muted sm:w-48 ${
+            slider.type === 'hero' ? 'aspect-[1.96/1]' : 'aspect-[5/4]'
+          }`}
+        >
+          {slider.image ? (
+            <Image
+              src={slider.image}
+              alt="Homepage promotion"
+              fill
+              sizes="192px"
+              className={
+                slider.type === 'hero' ? 'object-cover' : 'object-contain'
+              }
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center text-muted-foreground">
+              <ImagePlus className="h-6 w-6" />
+            </div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-medium">{TYPE_LABEL[slider.type]}</p>
+            <Badge variant={slider.active ? 'secondary' : 'outline'}>
+              {slider.active ? 'Visible' : 'Hidden'}
+            </Badge>
+          </div>
+          <p className="mt-1 truncate text-sm text-muted-foreground">
+            {slider.link || 'No destination link'}
+          </p>
+          <div className="mt-3 flex items-center gap-2">
+            <Switch
+              aria-label={`Show ${TYPE_LABEL[slider.type].toLowerCase()}`}
+              checked={slider.active}
+              onCheckedChange={() => onToggle(slider)}
+            />
+            <span className="text-sm text-muted-foreground">
+              Show on homepage
+            </span>
+          </div>
+        </div>
+        {onMove && (
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Move slide up"
+              disabled={index === 0}
+              onClick={() => onMove(index, -1)}
+            >
+              <ArrowUp className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Move slide down"
+              disabled={index === count - 1}
+              onClick={() => onMove(index, 1)}
+            >
+              <ArrowDown className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Replace or edit image"
+            onClick={() => onEdit(slider)}
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Delete promotion"
+            className="text-destructive hover:text-destructive"
+            onClick={() => onDelete(slider)}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function SliderPage() {
   const [sliders, setSliders] = useState<Slider[]>([]);
+  const [setting, setSetting] = useState<SliderSetting>(DEFAULT_SETTING);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<SliderType>('hero');
+  const [loadError, setLoadError] = useState('');
+  const [savingSetting, setSavingSetting] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [editing, setEditing] = useState<Slider | null>(null);
-  const [form, setForm] = useState<SliderForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+  const [editing, setEditing] = useState<Slider | null>(null);
+  const [form, setForm] = useState<SliderForm>(EMPTY_FORM);
   const [deleteTarget, setDeleteTarget] = useState<Slider | null>(null);
-  const imageInputRef = useRef<HTMLInputElement | null>(null);
-  const imageFileRef = useRef<File | null>(null);
+  const fileInput = useRef<HTMLInputElement | null>(null);
+  const imageFile = useRef<File | null>(null);
+  const previewUrl = useRef<string | null>(null);
 
   const fetchSliders = useCallback(async () => {
     try {
       setLoading(true);
+      setLoadError('');
       const { data } = await sliderApi.getAll();
-      if (data.success) setSliders(data.sliders || []);
-    } catch {
-      toast.error('Failed to load sliders');
+      setSliders(data.sliders ?? []);
+      setSetting(data.setting ?? DEFAULT_SETTING);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Failed to load slider settings';
+      setLoadError(message);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    fetchSliders();
+    void fetchSliders();
   }, [fetchSliders]);
 
-  const groupByType = (t: SliderType) =>
-    sliders
-      .filter((s) => s.type === t)
-      .sort((a, b) => a.sortOrder - b.sortOrder);
+  const heroSlides = useMemo(
+    () =>
+      sliders
+        .filter((slider) => slider.type === 'hero')
+        .sort((a, b) => a.sortOrder - b.sortOrder),
+    [sliders]
+  );
 
-  const openCreate = (t: SliderType) => {
+  const clearPreview = () => {
+    if (previewUrl.current) URL.revokeObjectURL(previewUrl.current);
+    previewUrl.current = null;
+    imageFile.current = null;
+  };
+
+  const openCreate = (type: SliderType) => {
+    clearPreview();
     setEditing(null);
-    const list = groupByType(t);
+    const count = sliders.filter((slider) => slider.type === type).length;
+    setForm({ ...EMPTY_FORM, type, sortOrder: count });
+    setDialogOpen(true);
+  };
+
+  const openEdit = (slider: Slider) => {
+    clearPreview();
+    setEditing(slider);
     setForm({
-      ...emptyForm,
-      type: t,
-      sortOrder: list.length
-        ? Math.max(...list.map((s) => s.sortOrder)) + 1
-        : 1,
+      image: slider.image,
+      link: slider.link ?? '',
+      type: slider.type,
+      active: slider.active,
+      sortOrder: slider.sortOrder,
     });
     setDialogOpen(true);
   };
 
-  const openEdit = (s: Slider) => {
-    setEditing(s);
-    setForm({
-      title: s.title,
-      description: s.description,
-      image: s.image,
-      link: s.link,
-      type: s.type,
-      active: s.active,
-      sortOrder: s.sortOrder,
-    });
-    setDialogOpen(true);
-  };
-
-  const handleImagePick = async (file: File | null) => {
+  const selectImage = (file?: File) => {
     if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please choose an image file');
+    if (
+      !['image/jpeg', 'image/png', 'image/gif', 'image/webp'].includes(
+        file.type
+      )
+    ) {
+      toast.error('Choose a JPG, PNG, GIF, or WebP image.');
       return;
     }
-    if (file.size > 4 * 1024 * 1024) {
-      toast.error('Image must be under 4MB');
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image must be 5 MB or smaller.');
       return;
     }
-    const dataUrl = await readFileToDataUrl(file);
-    setForm((f) => ({ ...f, image: dataUrl }));
-    imageFileRef.current = file;
-    toast.success('Image loaded');
+    clearPreview();
+    const objectUrl = URL.createObjectURL(file);
+    previewUrl.current = objectUrl;
+    imageFile.current = file;
+    setForm((current) => ({ ...current, image: objectUrl }));
   };
 
-  const handleSave = async () => {
-    if (!form.image && !imageFileRef.current) {
-      toast.error('Please upload an image or provide an image URL');
+  const save = async () => {
+    if (!form.image && !editing) {
+      toast.error('Upload an image before saving.');
+      return;
+    }
+    if (!validLink(form.link)) {
+      toast.error(
+        'Enter an internal path (for example, /products) or a valid HTTP(S) URL.'
+      );
       return;
     }
     try {
       setSaving(true);
       const payload = {
         ...form,
-        sortOrder: Number(form.sortOrder) || 0,
-        image: imageFileRef.current ? '' : form.image,
+        image: imageFile.current ? '' : form.image,
+        link: form.link.trim(),
       };
       if (editing) {
-        await sliderApi.update(editing._id, payload, imageFileRef.current);
-        toast.success('Slide updated');
+        await sliderApi.update(editing._id, payload, imageFile.current);
+        toast.success('Promotion updated.');
       } else {
-        await sliderApi.create(payload, imageFileRef.current);
-        toast.success('Slide created');
+        await sliderApi.create(payload, imageFile.current);
+        toast.success('Promotion added.');
       }
       setDialogOpen(false);
-      setEditing(null);
-      setForm(emptyForm);
-      imageFileRef.current = null;
-      fetchSliders();
-    } catch (err: any) {
+      clearPreview();
+      await fetchSliders();
+    } catch (error) {
       toast.error(
-        err?.response?.data?.message || err?.message || 'Failed to save slide'
+        error instanceof Error ? error.message : 'Failed to save promotion.'
       );
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleActive = async (s: Slider) => {
+  const updateSetting = async (patch: Partial<SliderSetting>) => {
+    const previous = setting;
+    const next = { ...setting, ...patch };
+    setSetting(next);
+    setSavingSetting(true);
     try {
-      await sliderApi.update(s._id, { active: !s.active });
-      toast.success(`Slide ${s.active ? 'hidden' : 'activated'}`);
-      fetchSliders();
-    } catch {
-      toast.error('Failed to update slide');
+      const { data } = await sliderApi.updateSetting(patch);
+      setSetting(data.setting);
+    } catch (error) {
+      setSetting(previous);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Failed to update slider settings.'
+      );
+    } finally {
+      setSavingSetting(false);
     }
   };
 
-  const move = async (list: Slider[], idx: number, dir: -1 | 1) => {
-    const swap = list[idx + dir];
-    if (!swap) return;
+  const toggleActive = async (slider: Slider) => {
     try {
-      await sliderApi.reorder([
-        { id: list[idx]._id, sortOrder: swap.sortOrder },
-        { id: swap._id, sortOrder: list[idx].sortOrder },
-      ]);
-      fetchSliders();
-    } catch {
-      toast.error('Failed to reorder');
+      await sliderApi.update(slider._id, { active: !slider.active });
+      setSliders((current) =>
+        current.map((item) =>
+          item._id === slider._id ? { ...item, active: !item.active } : item
+        )
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to update visibility.'
+      );
     }
   };
 
-  const handleDelete = async () => {
+  const moveSlide = async (index: number, direction: -1 | 1) => {
+    const reordered = [...heroSlides];
+    const target = index + direction;
+    [reordered[index], reordered[target]] = [
+      reordered[target],
+      reordered[index],
+    ];
+    try {
+      await sliderApi.reorder(
+        reordered.map((slide, sortOrder) => ({ id: slide._id, sortOrder }))
+      );
+      setSliders((current) =>
+        current.map((slide) => {
+          const order = reordered.findIndex((item) => item._id === slide._id);
+          return slide.type === 'hero' && order !== -1
+            ? { ...slide, sortOrder: order }
+            : slide;
+        })
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to reorder slides.'
+      );
+    }
+  };
+
+  const removePromotion = async () => {
     if (!deleteTarget) return;
     try {
       await sliderApi.delete(deleteTarget._id);
-      toast.success('Slide deleted');
+      setSliders((current) =>
+        current.filter((slide) => slide._id !== deleteTarget._id)
+      );
       setDeleteTarget(null);
-      fetchSliders();
-    } catch {
-      toast.error('Failed to delete slide');
+      toast.success('Promotion deleted.');
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : 'Failed to delete promotion.'
+      );
     }
   };
 
+  const renderRows = (items: Slider[], canReorder = false) =>
+    items.map((slider, index) => (
+      <SliderRow
+        key={slider._id}
+        slider={slider}
+        index={index}
+        count={items.length}
+        onEdit={openEdit}
+        onDelete={setDeleteTarget}
+        onToggle={toggleActive}
+        onMove={canReorder ? moveSlide : undefined}
+      />
+    ));
+
   return (
     <div>
-      <SiteHeader
-        title="Slider Management"
-        description="Manage homepage hero slides and side ad boxes."
-      />
+      <SiteHeader />
+      <div className="space-y-6 px-4 py-8">
+        <div>
+          <h1 className="text-2xl font-semibold">Homepage slider</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Manage the main carousel and the two homepage advertisements.
+          </p>
+        </div>
+        {loadError && (
+          <Alert variant="destructive">
+            <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
+              <span>{loadError}</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => void fetchSliders()}
+              >
+                Try again
+              </Button>
+            </AlertDescription>
+          </Alert>
+        )}
 
-      <div className="px-4 py-8">
-        <Tabs
-          value={activeTab}
-          onValueChange={(v) => setActiveTab(v as SliderType)}
-        >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <TabsList>
-              {TYPE_TABS.map((t) => (
-                <TabsTrigger key={t.value} value={t.value}>
-                  {t.label}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-            <Button onClick={() => openCreate(activeTab)}>
-              <Plus className="mr-2 h-4 w-4" /> Add {TYPE_LABEL[activeTab]}
+        <Card>
+          <CardHeader>
+            <CardTitle>Slider settings</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-5 sm:grid-cols-3">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="main-slider-toggle">Main slider</Label>
+                <p className="text-sm text-muted-foreground">
+                  Show enabled slides on the homepage.
+                </p>
+              </div>
+              <Switch
+                id="main-slider-toggle"
+                checked={setting.enabled}
+                disabled={savingSetting || loading}
+                onCheckedChange={(enabled) => void updateSetting({ enabled })}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="auto-slide-toggle">Auto-slide</Label>
+                <p className="text-sm text-muted-foreground">
+                  Manual navigation remains available when off.
+                </p>
+              </div>
+              <Switch
+                id="auto-slide-toggle"
+                checked={setting.autoSlide}
+                disabled={savingSetting || loading}
+                onCheckedChange={(autoSlide) =>
+                  void updateSetting({ autoSlide })
+                }
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <Label htmlFor="slide-interval">Slide interval</Label>
+                <p className="text-sm text-muted-foreground">
+                  Choose 3–10 seconds.
+                </p>
+              </div>
+              <Select
+                value={String(setting.interval)}
+                disabled={savingSetting || loading}
+                onValueChange={(value) =>
+                  value && void updateSetting({ interval: Number(value) })
+                }
+              >
+                <SelectTrigger id="slide-interval" className="w-36">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 8 }, (_, index) => index + 3).map(
+                    (seconds) => (
+                      <SelectItem key={seconds} value={String(seconds)}>
+                        {seconds} seconds
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+
+        <section className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-semibold">Main slides</h2>
+              <p className="text-sm text-muted-foreground">
+                Recommended image size: 982 × 500 px.
+              </p>
+            </div>
+            <Button onClick={() => openCreate('hero')} disabled={loading}>
+              <Plus className="mr-2 h-4 w-4" /> Add slide
             </Button>
           </div>
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2].map((item) => (
+                <Skeleton key={item} className="h-32 w-full" />
+              ))}
+            </div>
+          ) : heroSlides.length ? (
+            <div className="space-y-3">{renderRows(heroSlides, true)}</div>
+          ) : (
+            <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-12 text-center">
+              <ImagePlus className="h-8 w-8 text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">
+                No main slides have been added yet.
+              </p>
+              <Button variant="outline" onClick={() => openCreate('hero')}>
+                Add the first slide
+              </Button>
+            </div>
+          )}
+        </section>
 
-          {TYPE_TABS.map((t) => {
-            const list = groupByType(t.value);
-            return (
-              <TabsContent key={t.value} value={t.value} className="mt-4">
-                <p className="mb-3 text-sm text-muted-foreground">{t.hint}</p>
-                <div className="space-y-3">
-                  {loading ? (
-                    <div className="flex items-center justify-center py-16 text-muted-foreground">
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading
-                      sliders...
-                    </div>
-                  ) : list.length === 0 ? (
-                    <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed py-16 text-center">
-                      <ImagePlus className="h-8 w-8 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        No {t.label.toLowerCase()} yet. Click{' '}
-                        &quot;Add {TYPE_LABEL[t.value]}&quot; to create one.
+        <section className="space-y-3">
+          <div>
+            <h2 className="text-xl font-semibold">Advertisements</h2>
+            <p className="text-sm text-muted-foreground">
+              One advertisement appears in each fixed homepage slot.
+            </p>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-2">
+            {(['ad_top', 'ad_bottom'] as const).map((type) => {
+              const items = sliders
+                .filter((slider) => slider.type === type)
+                .sort((a, b) => a.sortOrder - b.sortOrder);
+              return (
+                <Card key={type}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                    <div>
+                      <CardTitle>{TYPE_LABEL[type]}</CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        315 × 252 px recommended.
                       </p>
                     </div>
-                  ) : (
-                    list.map((s, idx) => (
-                      <Card key={s._id}>
-                        <CardContent className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center">
-                          <div className="relative h-20 w-full shrink-0 overflow-hidden rounded-md border bg-muted sm:w-36">
-                            {s.image ? (
-                              <Image
-                                src={s.image}
-                                alt={s.title || 'Slide'}
-                                fill
-                                className="object-cover"
-                                sizes="144px"
-                              />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-                                <ImagePlus className="h-5 w-5" />
-                              </div>
-                            )}
-                          </div>
-
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2">
-                              <p className="truncate font-medium">
-                                {s.title || 'Untitled slide'}
-                              </p>
-                              <Badge variant="secondary">
-                                {TYPE_LABEL[s.type]}
-                              </Badge>
-                              <Badge
-                                variant={s.active ? 'secondary' : 'destructive'}
-                              >
-                                {s.active ? 'Active' : 'Hidden'}
-                              </Badge>
-                            </div>
-                            {s.description && (
-                              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
-                                {s.description}
-                              </p>
-                            )}
-                            {s.link && (
-                              <p className="mt-0.5 truncate text-xs text-blue-600">
-                                Link: {s.link}
-                              </p>
-                            )}
-                            <div className="mt-2 flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">
-                                Show:
-                              </span>
-                              <Switch
-                                checked={s.active}
-                                onCheckedChange={() => toggleActive(s)}
-                              />
-                            </div>
-                          </div>
-
-                          <div className="flex items-center gap-1 sm:flex-col">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={idx === 0}
-                              onClick={() => move(list, idx, -1)}
-                            >
-                              <ArrowUp className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              disabled={idx === list.length - 1}
-                              onClick={() => move(list, idx, 1)}
-                            >
-                              <ArrowDown className="h-4 w-4" />
-                            </Button>
-                          </div>
-
-                          <div className="flex items-center gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => openEdit(s)}
-                            >
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => setDeleteTarget(s)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+                    {!items.length && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openCreate(type)}
+                        disabled={loading}
+                      >
+                        <Plus className="mr-1 h-4 w-4" /> Add
+                      </Button>
+                    )}
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {loading ? (
+                      <Skeleton className="h-28 w-full" />
+                    ) : items.length ? (
+                      renderRows(items)
+                    ) : (
+                      <p className="rounded-md border border-dashed py-8 text-center text-sm text-muted-foreground">
+                        No advertisement in this slot.
+                      </p>
+                    )}
+                    {items.length > 1 && (
+                      <p className="text-xs text-muted-foreground">
+                        There are multiple entries for this slot. Only the first
+                        enabled one is shown; delete extra entries to keep the
+                        CMS unambiguous.
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
       </div>
 
-      {/* Create / Edit dialog */}
       <Dialog
         open={dialogOpen}
-        onOpenChange={(o) => {
-          if (!o) imageFileRef.current = null;
-          setDialogOpen(o);
+        onOpenChange={(open) => {
+          if (!open) clearPreview();
+          setDialogOpen(open);
         }}
       >
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
           <DialogHeader>
             <DialogTitle>
-              {editing ? 'Edit slide' : `New ${TYPE_LABEL[form.type]}`}
+              {editing
+                ? `Edit ${TYPE_LABEL[form.type].toLowerCase()}`
+                : `Add ${TYPE_LABEL[form.type].toLowerCase()}`}
             </DialogTitle>
             <DialogDescription>
-              {editing
-                ? 'Update the slide details and image.'
-                : 'Add a new slide. Wide images (1600×600) work best.'}
+              Upload or replace the image. Titles and descriptions are not
+              displayed on the homepage.
             </DialogDescription>
           </DialogHeader>
-
-          <div className="grid gap-4">
-            {/* Image */}
-            <div className="grid gap-3">
-              <div className="relative h-40 w-full overflow-hidden rounded-lg border bg-muted">
+          <div className="space-y-5">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Label>Image</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          aria-label="Recommended image dimensions"
+                        >
+                          <Info className="h-4 w-4" />
+                        </Button>
+                      }
+                    />
+                    <TooltipContent>
+                      {IMAGE_DIMENSIONS[form.type]}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <div
+                className={`relative w-full overflow-hidden rounded-lg border bg-muted ${
+                  form.type === 'hero' ? 'aspect-[1.96/1]' : 'aspect-[5/4]'
+                }`}
+              >
                 {form.image ? (
-                  <Image
-                    src={form.image}
-                    alt="Slide preview"
-                    fill
-                    className="object-cover"
-                    sizes="(max-width: 672px) 100vw, 672px"
-                  />
+                  <>
+                    <Image
+                      src={form.image}
+                      alt="Image preview"
+                      fill
+                      sizes="(max-width: 640px) 100vw, 576px"
+                      className={
+                        form.type === 'hero' ? 'object-cover' : 'object-contain'
+                      }
+                      unoptimized={form.image.startsWith('blob:')}
+                    />
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="icon"
+                      className="absolute right-2 top-2"
+                      aria-label="Remove image"
+                      onClick={() => {
+                        clearPreview();
+                        setForm((current) => ({
+                          ...current,
+                          image: '',
+                          active: false,
+                        }));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </>
                 ) : (
-                  <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+                  <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
                     <ImagePlus className="h-8 w-8" />
-                    <span className="text-xs">No image</span>
+                    <span className="text-sm">No image selected</span>
                   </div>
-                )}
-                {form.image && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setForm((f) => ({ ...f, image: '' }));
-                      imageFileRef.current = null;
-                    }}
-                    className="absolute right-2 top-2 rounded-full bg-background/90 p-1 shadow"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
                 )}
               </div>
               <input
-                ref={imageInputRef}
+                ref={fileInput}
                 type="file"
-                accept="image/*"
-                hidden
-                onChange={(e) =>
-                  handleImagePick(e.target.files?.[0] ?? null)
-                }
+                accept="image/jpeg,image/png,image/gif,image/webp"
+                className="hidden"
+                onChange={(event) => {
+                  selectImage(event.target.files?.[0]);
+                  event.currentTarget.value = '';
+                }}
               />
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => imageInputRef.current?.click()}
-                >
-                  <Upload className="mr-2 h-4 w-4" /> Upload image
-                </Button>
-                <div className="flex-1">
-                  <Input
-                    value={form.image}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, image: e.target.value }))
-                    }
-                    placeholder="https://… or upload"
-                  />
-                </div>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInput.current?.click()}
+              >
+                <Upload className="mr-2 h-4 w-4" />{' '}
+                {form.image ? 'Replace image' : 'Upload image'}
+              </Button>
             </div>
-
-            {/* Title */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="slide-title">Title (optional)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="slider-link">Destination link (optional)</Label>
               <Input
-                id="slide-title"
-                value={form.title}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, title: e.target.value }))
-                }
-                placeholder="e.g. New Season Deals"
-              />
-            </div>
-
-            {/* Description */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="slide-desc">Description (optional)</Label>
-              <Textarea
-                id="slide-desc"
-                value={form.description}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, description: e.target.value }))
-                }
-                placeholder="Short overlay text shown on the image"
-                rows={2}
-              />
-            </div>
-
-            {/* Link */}
-            <div className="grid gap-1.5">
-              <Label htmlFor="slide-link">Link (optional)</Label>
-              <Input
-                id="slide-link"
+                id="slider-link"
                 value={form.link}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, link: e.target.value }))
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    link: event.target.value,
+                  }))
                 }
-                placeholder="/product/example or https://…"
+                placeholder="/internal-route or https://example.com"
               />
+              <p className="text-xs text-muted-foreground">
+                Use a site path or an HTTP(S) URL.
+              </p>
             </div>
-
-            {/* Type + Sort order */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-1.5">
-                <Label>Type</Label>
-                <Select
-                  value={form.type}
-                  onValueChange={(v) =>
-                    setForm((f) => ({
-                      ...f,
-                      type: (v || 'hero') as SliderType,
-                    }))
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hero">Hero Slide</SelectItem>
-                    <SelectItem value="ad_top">Top Ad</SelectItem>
-                    <SelectItem value="ad_bottom">Bottom Ad</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="slide-order">Sort order</Label>
-                <Input
-                  id="slide-order"
-                  type="number"
-                  min={0}
-                  value={form.sortOrder}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      sortOrder: Number(e.target.value),
-                    }))
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Active */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               <Switch
                 checked={form.active}
-                onCheckedChange={(v) =>
-                  setForm((f) => ({ ...f, active: v === true }))
+                onCheckedChange={(active) =>
+                  setForm((current) => ({ ...current, active }))
                 }
               />
-              <span className="text-sm text-muted-foreground">
-                Show this slide on the homepage
-              </span>
+              <Label>Show on homepage</Label>
             </div>
           </div>
-
           <DialogFooter>
             <Button
               variant="outline"
@@ -571,31 +751,30 @@ export default function SliderPage() {
             >
               Cancel
             </Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button onClick={() => void save()} disabled={saving}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editing ? 'Save changes' : 'Create slide'}
+              {editing ? 'Save changes' : 'Add promotion'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete confirm */}
       <AlertDialog
         open={!!deleteTarget}
-        onOpenChange={(o) => !o && setDeleteTarget(null)}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this slide?</AlertDialogTitle>
+            <AlertDialogTitle>Delete this promotion?</AlertDialogTitle>
             <AlertDialogDescription>
-              {deleteTarget?.title || 'This slide'} will be permanently removed
-              from the homepage. This action cannot be undone.
+              This image will be removed from the homepage. This action cannot
+              be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Keep slide</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete}>
-              Delete slide
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => void removePromotion()}>
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

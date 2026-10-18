@@ -3,6 +3,8 @@ import { cache } from 'react';
 import { buildApiUrl } from '@/lib/apiConfig';
 import AdminLayoutClient from './AdminLayoutClient';
 
+export const dynamic = 'force-dynamic';
+
 const FALLBACK_BRAND_NAME = 'AppleItZone';
 
 const getBrandName = cache(async () => {

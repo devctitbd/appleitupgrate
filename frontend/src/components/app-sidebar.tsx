@@ -22,6 +22,7 @@ import {
   BellCheck,
   ChartLine,
   Gem,
+  Layers,
   LayersArrowDown,
   LayoutArrowRight,
   LayoutDashboard,
@@ -112,6 +113,21 @@ const data = {
         {
           title: 'New Order',
           url: '/admin/orders/new',
+        },
+      ],
+    },
+    {
+      title: 'Filters Cms',
+      url: '#',
+      icon: <Layers />,
+      items: [
+        {
+          title: 'All Filters',
+          url: '/admin/filters',
+        },
+        {
+          title: 'New Filter',
+          url: '/admin/filters/new',
         },
       ],
     },

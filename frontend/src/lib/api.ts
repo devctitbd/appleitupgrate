@@ -163,8 +163,6 @@ export type HomeSliderTextForm = {
 };
 
 export type SliderForm = {
-  title: string;
-  description: string;
   image: string;
   link: string;
   type: SliderType;
@@ -172,9 +170,19 @@ export type SliderForm = {
   sortOrder: number;
 };
 
+export type SliderSetting = {
+  enabled: boolean;
+  autoSlide: boolean;
+  interval: number;
+};
+
 export const sliderApi = {
   getAll: (params?: { active?: boolean }) =>
-    apiFetch<{ success: boolean; sliders: Slider[] }>('/sliders', {
+    apiFetch<{
+      success: boolean;
+      sliders: Slider[];
+      setting: SliderSetting;
+    }>('/sliders', {
       params: params
         ? { active: params.active ? 'true' : undefined }
         : undefined,
@@ -203,6 +211,12 @@ export const sliderApi = {
       body: {
         orders,
       },
+    }),
+
+  updateSetting: (setting: Partial<SliderSetting>) =>
+    apiFetch<{ success: boolean; setting: SliderSetting }>('/sliders/setting', {
+      method: 'PUT',
+      body: setting,
     }),
 };
 

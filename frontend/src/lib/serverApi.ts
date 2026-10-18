@@ -63,8 +63,14 @@ export const fetchPhysicalStores = cache(async () => {
 
 // Active hero/ad sliders for the home page.
 export const fetchActiveSliders = cache(async () => {
-  const data = await getJson<{ sliders: any[] }>('/sliders?active=true');
-  return data?.sliders || [];
+  const data = await getJson<{
+    sliders: any[];
+    setting?: { enabled?: boolean; autoSlide?: boolean; interval?: number };
+  }>('/sliders?active=true', 10);
+  return {
+    sliders: data?.sliders || [],
+    setting: data?.setting ?? null,
+  };
 });
 
 // Active marquee notifications + whether the marquee is enabled.

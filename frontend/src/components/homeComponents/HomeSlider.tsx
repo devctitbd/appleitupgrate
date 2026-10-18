@@ -1,263 +1,214 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { AnimatePresence, motion } from 'motion/react';
 import Image from 'next/image';
-import Link from 'next/link';
-import React, { useCallback, useEffect, useState } from 'react';
 import {
-  defaultSliderData,
   type AdBoxData,
   type HomeSliderData,
   type SlideData,
 } from './homeSliderShared';
 
-// Re-export the shared types for backwards compatibility.
 export type { AdBoxData, HomeSliderData, SlideData };
 
 interface HomeSliderProps {
   data?: HomeSliderData;
 }
 
-const HomeSlider: React.FC<HomeSliderProps> = ({ data }) => {
+const EMPTY_DATA: HomeSliderData = {
+  slides: [],
+  adBoxes: [],
+  autoSlide: true,
+  interval: 5,
+};
+
+const HomeSlider: React.FC<HomeSliderProps> = ({ data = EMPTY_DATA }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-
-  const sliderData = data ?? defaultSliderData;
-  const slideCount = sliderData.slides.length;
-
-  const nextSlide = useCallback(() => {
-    setCurrentIndex((prev) => (slideCount > 0 ? (prev + 1) % slideCount : 0));
-  }, [slideCount]);
-
-  const prevSlide = useCallback(() => {
-    setCurrentIndex((prev) =>
-      slideCount > 0 ? (prev - 1 + slideCount) % slideCount : 0
+  const slideCount = data.slides.length;
+  const ads = data.adBoxes
+    .filter((ad) => ad.position === 'top' || ad.position === 'bottom')
+    .sort(
+      (a, b) =>
+        (a.position === 'top' ? -1 : 1) - (b.position === 'top' ? -1 : 1)
     );
-  }, [slideCount]);
 
-  // Auto-advance slider
   useEffect(() => {
-    if (slideCount <= 1) return;
-    const timer = setInterval(() => {
-      nextSlide();
-    }, 5000);
-    return () => clearInterval(timer);
-  }, [nextSlide, slideCount]);
+    if (!data.autoSlide || slideCount < 2) return;
 
-  // Keep currentIndex in bounds if slides change
+    let timer: number | undefined;
+    const stop = () => {
+      if (timer !== undefined) window.clearInterval(timer);
+      timer = undefined;
+    };
+    const start = () => {
+      if (document.visibilityState === 'visible' && timer === undefined) {
+        timer = window.setInterval(() => {
+          setCurrentIndex((index) => (index + 1) % slideCount);
+        }, data.interval * 1000);
+      }
+    };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') stop();
+      else start();
+    };
+
+    start();
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [data.autoSlide, data.interval, slideCount]);
+
   useEffect(() => {
     if (currentIndex >= slideCount) setCurrentIndex(0);
-  }, [slideCount, currentIndex]);
+  }, [currentIndex, slideCount]);
 
-  const slideVariants = {
-    enter: {
-      opacity: 0,
-    },
-    center: {
-      opacity: 1,
-    },
-    exit: {
-      opacity: 0,
-    },
-  };
+  if (slideCount === 0 && ads.length === 0) return null;
 
-  // Empty state (no active slides)
-  if (slideCount === 0) {
-    return (
-      <div className="w-full">
-        <div className="mx-auto max-w-7xl px-4 py-6">
-          <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:h-[clamp(360px,35vw,500px)] lg:grid-cols-10">
-            <div className="aspect-video rounded-xl bg-gray-100 lg:col-span-7 lg:aspect-auto" />
-            <div className="flex h-auto flex-row gap-4 lg:col-span-3 lg:h-full lg:flex-col lg:gap-6">
-              <div className="aspect-4/3 min-w-0 flex-1 rounded-xl bg-gray-100 lg:aspect-auto" />
-              <div className="aspect-4/3 min-w-0 flex-1 rounded-xl bg-gray-100 lg:aspect-auto" />
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  const currentSlide = sliderData.slides[currentIndex];
-  const currentLink =
-    currentSlide.link && currentSlide.link !== '#' ? currentSlide.link : null;
+  const mainSlide = data.slides[currentIndex];
 
   return (
-    <div className="w-full">
-      <div className="mx-auto max-w-7xl px-4 py-6">
-        <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:h-[clamp(360px,35vw,500px)] lg:grid-cols-10">
-          {/* Left Side - Main Slider (70% width on desktop) */}
-          <div className="relative aspect-video lg:col-span-7 lg:aspect-auto lg:h-full">
-            <div className="relative h-full overflow-hidden rounded-xl bg-gray-100">
-              <AnimatePresence initial={false} mode="wait">
-                <motion.div
-                  key={currentIndex}
-                  variants={slideVariants}
-                  initial="enter"
-                  animate="center"
-                  exit="exit"
-                  transition={{
-                    opacity: { duration: 0.8, ease: 'easeInOut' },
-                  }}
-                  className="absolute inset-0"
-                >
-                  {currentLink ? (
-                    <Link href={currentLink} className="absolute inset-0">
-                      <Image
-                        src={currentSlide.image}
-                        alt={currentSlide.title}
-                        fill
-                        className="object-cover object-center"
-                        sizes="(max-width: 1024px) 100vw, 70vw"
-                        loading="eager"
-                      />
-                      {currentSlide.title && (
-                        <>
-                          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
-                          <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
-                            <motion.h2
-                              initial={{ y: 20, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              transition={{ delay: 0.2 }}
-                              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
-                            >
-                              {currentSlide.title}
-                            </motion.h2>
-                            {currentSlide.description && (
-                              <motion.p
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.3 }}
-                                className="text-sm sm:text-base text-gray-200 mb-4"
-                              >
-                                {currentSlide.description}
-                              </motion.p>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </Link>
-                  ) : (
-                    <>
-                      <Image
-                        src={currentSlide.image}
-                        alt={currentSlide.title}
-                        fill
-                        className="object-cover object-center"
-                        sizes="(max-width: 1024px) 100vw, 70vw"
-                        loading="eager"
-                      />
-                      {currentSlide.title && (
-                        <>
-                          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent" />
-                          <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
-                            <motion.h2
-                              initial={{ y: 20, opacity: 0 }}
-                              animate={{ y: 0, opacity: 1 }}
-                              transition={{ delay: 0.2 }}
-                              className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2"
-                            >
-                              {currentSlide.title}
-                            </motion.h2>
-                            {currentSlide.description && (
-                              <motion.p
-                                initial={{ y: 20, opacity: 0 }}
-                                animate={{ y: 0, opacity: 1 }}
-                                transition={{ delay: 0.3 }}
-                                className="text-sm sm:text-base text-gray-200 mb-4"
-                              >
-                                {currentSlide.description}
-                              </motion.p>
-                            )}
-                          </div>
-                        </>
-                      )}
-                    </>
-                  )}
-                </motion.div>
-              </AnimatePresence>
-
-              {/* Navigation Buttons */}
-              <button
-                onClick={prevSlide}
-                className="absolute left-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-colors z-10"
-                aria-label="Previous slide"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="absolute right-4 top-1/2 -translate-y-1/2 bg-white/90 hover:bg-white p-2 rounded-full shadow-lg transition-colors z-10"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-5 h-5" />
-              </button>
-
-              {/* Dots Indicator */}
-              <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2">
-                {sliderData.slides.map((_, index) => (
-                  <button
-                    key={index}
-                    onClick={() => setCurrentIndex(index)}
-                    className={`w-2 h-2 rounded-full transition-all ${
-                      index === currentIndex ? 'bg-white w-6' : 'bg-white/50'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Right Side - Two Ad Boxes (30% width on desktop, horizontal on mobile) */}
-          <div className="flex h-auto flex-row gap-4 lg:col-span-3 lg:h-full lg:flex-col lg:gap-6">
-            {sliderData.adBoxes.map((adBox) => {
-              const adLink =
-                adBox.link && adBox.link !== '#' ? adBox.link : null;
-              const adContent = (
-                <>
+    <section className="w-full" aria-label="Homepage promotions">
+      <div className="relative left-1/2 mx-auto w-[min(1345px,calc(100vw_-_2rem))] -translate-x-1/2 px-4 py-6">
+        <div
+          className={`grid grid-cols-1 items-center gap-4 ${
+            slideCount && ads.length
+              ? 'lg:grid-cols-[minmax(0,982px)_315px]'
+              : 'lg:grid-cols-1'
+          }`}
+        >
+          {mainSlide && (
+            <div className="relative aspect-[982/500] w-full overflow-hidden rounded-xl bg-gray-100 lg:h-[500px] lg:aspect-auto">
+              {data.slides.map((slide, index) => {
+                const image = (
                   <Image
-                    src={adBox.image}
-                    alt={adBox.title}
+                    src={slide.image}
+                    alt="Homepage promotion"
                     fill
-                    className="object-cover object-center transition-transform duration-300 group-hover:scale-105"
-                    sizes="(max-width: 1024px) 100vw, 30vw"
+                    priority={index === currentIndex}
+                    loading={index === currentIndex ? undefined : 'lazy'}
+                    sizes="(max-width: 1024px) 100vw, min(982px, 72vw)"
+                    className={`object-cover object-center transition-opacity duration-300 ${
+                      index === currentIndex ? 'opacity-100' : 'opacity-0'
+                    }`}
                   />
-                  <div className="absolute inset-0 bg-linear-to-t from-black/70 via-transparent to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4">
-                    <h3 className="text-lg font-bold text-white mb-1">
-                      {adBox.title}
-                    </h3>
-                    {adBox.description && (
-                      <p className="text-sm text-gray-200">
-                        {adBox.description}
-                      </p>
+                );
+                return (
+                  <div
+                    key={slide.id}
+                    className={`absolute inset-0 transition-opacity duration-300 ${
+                      index === currentIndex
+                        ? 'opacity-100'
+                        : 'pointer-events-none opacity-0'
+                    }`}
+                    aria-hidden={index !== currentIndex}
+                  >
+                    {slide.link ? (
+                      <a
+                        href={slide.link}
+                        aria-label="Open promotion"
+                        className="absolute inset-0"
+                      >
+                        {image}
+                      </a>
+                    ) : (
+                      image
                     )}
                   </div>
+                );
+              })}
+
+              {slideCount > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentIndex(
+                        (index) => (index - 1 + slideCount) % slideCount
+                      )
+                    }
+                    className="absolute left-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow transition-colors hover:bg-white"
+                    aria-label="Previous slide"
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentIndex((index) => (index + 1) % slideCount)
+                    }
+                    className="absolute right-3 top-1/2 z-10 -translate-y-1/2 rounded-full bg-white/90 p-2 shadow transition-colors hover:bg-white"
+                    aria-label="Next slide"
+                  >
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                  <div className="absolute bottom-4 left-1/2 z-10 flex -translate-x-1/2 gap-2">
+                    {data.slides.map((slide, index) => (
+                      <button
+                        key={slide.id}
+                        type="button"
+                        onClick={() => setCurrentIndex(index)}
+                        className={`h-2 rounded-full transition-all ${
+                          index === currentIndex
+                            ? 'w-6 bg-white'
+                            : 'w-2 bg-white/60'
+                        }`}
+                        aria-label={`Go to slide ${index + 1}`}
+                        aria-current={index === currentIndex}
+                      />
+                    ))}
+                  </div>
                 </>
-              );
-              return (
-                <motion.div
-                  key={adBox.id}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: adBox.position === 'top' ? 0.4 : 0.5 }}
-                  className="relative aspect-4/3 min-w-0 flex-1 overflow-hidden rounded-xl bg-gray-100 group cursor-pointer lg:aspect-auto lg:min-h-0"
-                >
-                  {adLink ? (
-                    <Link href={adLink} className="absolute inset-0">
-                      {adContent}
-                    </Link>
-                  ) : (
-                    adContent
-                  )}
-                </motion.div>
-              );
-            })}
-          </div>
+              )}
+            </div>
+          )}
+
+          {ads.length > 0 && (
+            <div
+              className={`grid grid-cols-2 gap-3 lg:grid-cols-1 lg:gap-2 ${
+                slideCount
+                  ? ''
+                  : ads.length > 1
+                    ? 'lg:max-w-[638px] lg:grid-cols-2 lg:justify-self-center'
+                    : 'lg:max-w-[315px] lg:grid-cols-1 lg:justify-self-center'
+              }`}
+            >
+              {ads.map((ad) => {
+                const image = (
+                  <Image
+                    src={ad.image}
+                    alt="Homepage advertisement"
+                    fill
+                    loading="lazy"
+                    sizes="(max-width: 1024px) 50vw, 315px"
+                    className="object-cover object-center"
+                  />
+                );
+                return (
+                  <div
+                    key={ad.id}
+                    className="relative aspect-[5/4] min-w-0 overflow-hidden rounded-xl bg-gray-100 lg:w-full"
+                  >
+                    {ad.link ? (
+                      <a
+                        href={ad.link}
+                        aria-label="Open advertisement"
+                        className="absolute inset-0"
+                      >
+                        {image}
+                      </a>
+                    ) : (
+                      image
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

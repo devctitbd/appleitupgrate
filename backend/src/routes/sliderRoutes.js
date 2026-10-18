@@ -6,6 +6,7 @@ import {
   updateSlider,
   deleteSlider,
   reorderSliders,
+  updateSliderSetting,
 } from '../controllers/sliderController.js';
 import { uploadSliderImage } from '../middleware/upload.js';
 import { protect, adminOnly } from '../middleware/auth.js';
@@ -18,6 +19,7 @@ router.get('/:id', getSliderById);
 
 // ---- Admin-only routes ----
 router.post('/', protect, adminOnly, uploadSliderImage, createSlider);
+router.put('/setting', protect, adminOnly, updateSliderSetting);
 router.put('/reorder', protect, adminOnly, reorderSliders);
 router.put('/:id', protect, adminOnly, uploadSliderImage, updateSlider);
 router.delete('/:id', protect, adminOnly, deleteSlider);
